@@ -1,0 +1,1282 @@
+Lab book
+
+27/10/16
+copy files from gallstone to computer:
+
+-bash-4.1$ scp README.md linda@sce-bio-c02967:~/Desktop/
+The authenticity of host 'sce-bio-c02967 (129.215.170.132)' can't be established.
+RSA key fingerprint is 7e:01:a0:c9:92:cf:77:68:c8:e9:9a:7f:a6:67:30:5d.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added 'sce-bio-c02967,129.215.170.132' (RSA) to the list of known hosts.
+linda@sce-bio-c02967's password: 
+README.md                                     100%   49     0.1KB/s   00:00    
+
+copy files from computer to gallstone:
+scp file.txt s1461915@gallstone.bio.ed.ac.uk:~/PhD/
+
+copy multiple files:
+scp file1.txt file2.txt s1461915@gallstone.bio.ed.ac.uk:~/PhD/
+
+3/11/16
+Lynsey has transferred some files to work with blockcutter onto my account. These are bed, vcf, tabixed vcf, and loci files for several individuals from several species.
+
+7/11/16
+bed file contains name of each contig with start and stop positions, and whether it is callable, low coverage or no coverage. I need to remove the low and no coverage ones first (and remove the column that says if it is callable). I also need the length of each contig (stop-start).
+Python version on gallstone is 2.6.6, I need 2.7 to run blockcutter and can't update it on gallstone.
+
+8/11/16
+running blockcutter directly on the computer (through the terminal (linda@sce-bio-c02967)). Files are saved in Desktop/Will/blockcutter_test.
+Python is version 2.7.6.
+
+in blockcutter_ANNOTATED there is an error line 69, the first ' is different and python says invalid syntax. Changed it to ' and it works.
+output of blockcutter_ANNOTATED is a file called Cfun.271mini.npy, which contains just the first 500 blocks to make it quicker. It is in binary so can't be read by humans but can be read by other python scripts. To make it into the input for Mathematica, you can use Lynsey's triple_generator.py script which turns it into counts per block of mutations per individual, instead of mutations/block/site/individual. So {contig_name, block_coordinates}{no._of_mutations_in_1st_indiv,no._of_mutations_in_2nd_indiv,no._of_mutations_in_3rd_indiv} instead of {contig_name, block_coordinates}{(site1_indiv1,site1_indiv2,site1_indiv3)(site2_indiv1,site2_indiv2,site2_indiv3)...}
+
+Creating input files for blockcutter from files in gallstone in PhD/home:
+grep CALLABLE Cfun135.CallableLoci.mbq10mmq20md2.masked.bed | awk '{print $1, $2, $3}' | awk '{a=$3-$2;print $0,a;}'
+This removes lines that are not callable (low or no coverage) and then removes the column saying what the coverage is, then makes another column with length of the contig (end-start coordinates), so each line looks like this:
+NODE_29_length_343782_cov_6.08674_ID_57 41 367 326
+
+Do I combine all of the bed files to get multiple individuals in one file? The example only used 6 individuals (135,142,83,71,86B,3549B). If I do that lots of the contigs will overlap but not entirely. Do I only want the bits that all individuals share?
+
+9/11/16
+installed printer next door called office_printer_2
+
+Lynsey has sent me a shell script to combine bed files from individuals into one, called SelectSextupletsMD1maskedOct2016.sh
+This seems to work for the Cfun files, but not quite the same as in the block_cutter_ANNOTATED script?
+For the species with more than 6 individuals, 6 are from Spain and 2 are from Iran and 2 from Hungary. I should have a table somewhere saying which is which...
+
+10/11/16
+The file with the origin of each individual is parasitoid_species_list_Sample_summaries.xlsx in linda/Desktop/Will/blockcutter
+Most species do not have 6 Spanish individuals- only Msti, Onit and Opom do. I shall do it with these three first.
+
+./SelectSextupletsMD1maskedOct2016.sh Msti 297 393 311 004 395 314 Msti.scaffolds.fasta
+This works! I now have a .bed2 and a .bed.lengths file. Do I need the .lengths?
+
+I have made a file Mstiloci.txt with 
+tabix -l Msti.calibrated_haploid.filtered_variants.vcf.gz > Mstiloci.txt
+
+then move to linda, then do blockcutter (as linda has python2.7 but gallstone doesn't?)
+(how do you decide on a block length?)
+
+./block_cutter_vcf_LBv2.py Msti297.Msti393.Msti311.Msti004.Msti395.Msti314.CallableLoci.mbq10mmq20md1.masked.CALLABLE.bed2 Msti.calibrated_haploid.filtered_variants.vcf.gz Mstiloci.txt 271 Msti297.Msti393.Msti311.Msti004.Msti395.Msti314 Msti > Msti271_SummaryV2.txt &
+
+does not work- i need Msti.blobplot.txt.clean.nuclear.list
+
+Use block_cutter_vcf.py instead of block_cutter_vcf_LBv2.py - v1 doesn't have the blobplot bit (which filters out contigs that are not hymenopteran?).
+
+./block_cutter_vcf.py Msti297.Msti393.Msti311.Msti004.Msti395.Msti314.CallableLoci.mbq10mmq20md1.masked.CALLABLE.bed2 Msti.calibrated_haploid.filtered_variants.vcf.gz Mstiloci.txt 271 Msti297.Msti393.Msti311.Msti004.Msti395.Msti314 Msti > Msti271_Summary.txt &
+
+does seem to work!
+now I need to run it through triple_generator.py to get a Mathematica readable file?
+
+./triple_generator.py Msti297.Msti393.Msti311.Msti004.Msti395.Msti314.271.npy > MstiTriples.txt &
+
+seems to work. Does this ignore three individuals?
+I have done this (blockcutter and triple generator) for Msti, Onit and Opom (Spanish individuals) (in linda). Now I need to put them through Mathematica.
+
+11/11/16
+Lynsey's triple generator is not really relevant for me. Hers is for three populations, mine is just one. I have modified Lynsey's triple_generator.py to not do the tripley bit- I want to use all 6 individuals and don't need to reorder it. This file is sextuple_generator.py in linda/Desktop/Will/blockcutter. It seems to work? Gives some output that looks sensible anyway.
+
+15/11/16
+I have made a new function from Lynsey's count2X2 function in block_cutter_vcf.py. My function is configs3 and it gives a list of (unrooted) mutational configurations in each block, for any number of individuals in one population. It also removes the invariant site configurations. It is in linda/Desktop/Will/blockcutter/configs3.py.
+
+17/11/16
+configs3 now outputs a dictionary with blocks as keys and counts as values, instead of outputting just a list of counts.
+Tested on Cfun.271mini.npy - it works!
+configs3.py is now called mtype_counts.py as config counts is another thing that I will do.
+
+23/11/16
+new script called nton_counts.py gives a dictionary of blocks and counts of singletons, doubletons, tripletons etc. for any number of individuals. In linda/Desktop/Will/blockcutter/nton_counts.py. Works on Cfun.271mini.npy, and outputs a text file.
+
+24/11/16
+I have already done blockcutter (in linda) on Msti, Onit and Opom, so now I just need to do nton_counts.py on them before mathematica.
+Done nton_counts.py on Msti, Onit and Opom. Output files are in linda/Desktop/Will/blockcutter/Msti/Msti_nton_counts_output.txt and equivalents for Onit and Opom. Looks good!
+Now redone nton_counts.py on Msti, Onit and Opom with extra bit in nton_counts.py to convert it to Mathematica-readable output.
+
+1/12/16
+I have made a new version of nton_counts.py called nton_counts_table.py that outputs a table with columns of block, singletons, doubletons etc. It has () and ' characters in it, but these can be removed in bash with sed "s/[()'\"]//g" to make it readable to Mathematica. Columns are tab delimited. So do this:
+sed "s/[()'\"]//g" Cfun_nton_counts_table_test_output.txt > Cfun_nton_counts_table_test_clean.txt
+Obviously it would be better if my python script did this but I can't work it out/be bothered.
+Now I have to put all 8 species through blockcutter, then nton_counts_table.py, then sed, then Mathematica.
+I have modified lynsey's SelectSextuplets.sh bash script which combines bed files for 6 individuals, the new script does the same for 5 individuals and is called SelectQuintuplets.sh
+This seems to work. I have done it for Cfun. Make sure to specify the Spanish individuals!
+Now I just need to do SelectQuintuplets on each species, send over the new .bed2 files to linda then I can do blockcutter!
+I also need to make a loci.txt file for each species (if I have not already done this) using 
+tabix -l Mdor.calibrated_haploid.filtered_variants.vcf.gz > Mdorloci.txt
+and send them over, then blockcutter.
+I have made the files for Cfun, Mdor, Msti, Taur, Onit, Opom and Ebru. I don't seem to have all of the Eadl individuals that there are in the parasitoid_species_list_Sample_summaries.xlsx file. Only 2 Spanish ones.
+I will send over to linda the files that I have made tomorrow.
+
+2/12/16
+I have scp'd the files to linda. Now blockcutter!
+Nope. I didn't do the combining of bed files properly, Lynsey's SelectSextuplets.sh needed to be changed so cut -f1-3,12 was cut -f1-3,11.
+Redone making .bed2 files and scp'd them to linda again. Run blockcutter, which now works, and nton_counts_table.py. May need to remove brackets and quotes, then ready for Mathematica. Files currently saved as Taur_nton_counts_table_output5.txt (or equivalent).
+To change round brackets to curly brackets and remove quotes, use:
+sed 's/[(]/{/g' Taur_nton_counts_table_output5.txt | sed 's/[)]/}/g' | sed "s/['\"]//g" > Taur_nton_counts_table_clean.txt
+Now Mathematica!
+to import data as list of counts of ntons in each block, use:
+Drop[#, 3] & /@ 
+ Import["/home/linda/Documents/Will/blockcutter/Taur/Taur_nton_counts_\
+table_clean_head.txt", "Table"]
+With a ; on the end if you don't want to see the file (_head.txt is only 10 lines long so it is ok to see it- with the full size file it would be best to use ;)
+
+12/12/16
+I needed to use a different block length for each species when doing blockcutter. Block length should be the average length for 2 mutations. Find this from .vcf and .bed files.
+.vcf has number of mutations, find using this:
+gzip -cd Cfun.calibrated_haploid.filtered_variants.vcf.gz | grep -E '^NODE_' | wc -l
+but this may include variants that are not used because they are low quality.
+.bed file has length of each callable stretch, find total with this:
+awk '{sum += $4} END {print sum}' Cfun135.Cfun139.Cfun3528.Cfun142.Cfun143.CallableLoci.mbq10mmq20md1.masked.CALLABLE.bed2
+This gives 132599149/3912271 = 33.89, and 33.89*2 = 67.78 which is much less than 271. This may be wrong- because of low quality variants?
+Using this gets only varians that PASS all filters:
+gzip -cd Cfun.calibrated_haploid.filtered_variants.vcf.gz | grep -E '^NODE_' | grep 'PASS' | wc -l
+But still does not change the result that much.
+132599149/3647434 = 36.35 *2 = 72.708
+This is not how to do it. Need to get average pairwise pi per nucleotide and therefore average length of 2 mutations. In similar way to blockcutter. Write script. VCFtools?
+
+13/12/16
+played around a bit trying to get pi. In file linda/Documents/Will/blockcutter/block_length_experimentation.py
+Still need to check last function and make one that calculates pi per locus.
+
+14/12/16
+Made progress on block_length.py script. It currently removes all sites with 'None's, maybe this is too strict and I should keep some by turning them into '0's. It may not work. Takes ages. Try again tomorrow.
+
+15/12/16
+block_length.py did not work, but now I have fixed it and it does run at least. May not be quite right still. I also still need to make a matrix of pairwise pi values.
+
+16/12/16
+pairwise_diffs.py is now mostly working. It gives the number of differences between each pair of individuals, but I cannot quite get it to calculate pi (from differences / number of sites in .bed2 file). IndexError: list index out of range. Nearly there though! It gives a list instead of a matrix but this does not really matter. Have made a mini .vcf file of first 100 lines of big .vcf file in order to try the script out on something that doesn't take 15 minutes: Cfun.vcf_file_head100.vcf.
+
+19/1/17
+fixed pairwise_diffs.py script so that it outputs block length, but not sure if this block length is correct. Calculated by (total number of sites in bed file / total number of pairwise differences between individuals) * 2. This gives block length of 33 for Cfun- seems too small. Alternatively, use segregating sites from number of sites in VCF file. About 2x bigger, but still not as big as Lynsey's block length (how did she make that?)
+What I needed to do is get average number of pwds between each pair of individuals, then divide this by the total number of sites. This gives pi per site, I then do 2/pi per site to get number of sites to have 2 differences. I have now fixed pairwise_diffs.py to do this, and it gives a much more reasonable block length. This is better than using segregating sites as it is not dependent on sample size as it uses average number of diffs between individuals.
+Now I need to do blockcutter, then nton_counts_table_KL.py (i think), then I can do Mathematica.
+
+20/1/17
+I have now done blockcutter and nton_counts_table_KL.py on Cfun with block size of 338. Importing to Mathematica using:
+cfuntest = 
+  Drop[Drop[#, 3] & /@ 
+    Import["/home/linda/Documents/Will/blockcutter/Cfun/Cfun_nton_\
+counts_table_KL.txt", "Table"], 1];
+I think the Drop[,1] removes the header, which in this case is the whole thing as it is only 1 line. So I removed this and it works better, but it still has the scaffold and position info, so Drop[#,3]&/@ hasn't worked. Maybe it only removed the first one?
+OK. so what finally does work is:
+cfuntest = 
+  Get["/home/linda/Documents/Will/blockcutter/Cfun/Cfun_nton_counts_\
+table_KL2_simple3.txt"];
+This file is without the contig or position information, so just counts of singletons and doubletons.
+
+23/1/17
+doing more mathematica on Cfun and blockcutting Taur. To process the output file from nton_counts to put it into mathematica, use:
+xargs -n5 < Taur_nton_counts_table_KL.txt > Taur_nton_counts_table_KL2.txt
+to put each block on a separate line, then:
+cut -d ' ' -f4- Taur_nton_counts_table_KL2.txt | sed 's/\}//2' | sed 's/,//2' > Taur_nton_counts_table_KL2_simple.txt
+to remove block info, then:
+sed "s/$/,/g" Taur_nton_counts_table_KL2_simple.txt | sed "1s/^/\{/" | sed '$ s/.$//' > Taur_nton_counts_table_KL2_simple2.txt
+to add commas at the end of each line, add a bracket at the start and remove the final comma on the last line.
+
+24/1/17
+bSFS model of Taur estimating all 3 parameters failed to converge to the requested accuracy or precision within 100 iterations. Took 3 hours to do. logL same as other models (-30367.8), theta = 1.9, b1 = 0.0549907, T1 = 4.57557.
+Cfun block length = 338
+Taur block length = 328
+Ebru block length = 223
+Mdor block length = 558
+Msti block length = 1584
+Onit block length = 586
+Opom block length = 376
+All now have *_nton_counts_table_KL2_simple2.txt files ready for Mathematica.
+
+25/1/17
+I have run Ebru in Mathematica. with T1=0 and b1=0, logL = -28518.1, theta = 1.61603.
+With T1=0, logL is the same, theta = 1.61607, b1 = 2.90346*10-8 (so no support for bottleneck at T1=0)
+With all 3 parameters estimated, logL = -28510.6, theta = 1.82274, b1 = 0.169463, T1 = 0.500202 so there is support for a bottleneck! On what scale is T1? 
+Running the Ebru logL curve for bottleneck strength with b1 fixed along a grid of points (0, 0.3, 0.03).
+So far it has taken all day (>8 hours) and 6 have failed to converge.
+
+26/1/17
+The Ebru logL curve has finished. Failed to converge 7 times, apparrently did converge 4 times. The T1 estimates are right up against the limit of 5 - most are 4.99. Output:
+{{0., {-28518.1, {theta -> 1.61602, Subscript[T, 1] -> 2.10759}}}, 
+{0.03, {-28518.1, {theta -> 1.61505, Subscript[T, 1] -> 4.80694}}}, 
+{0.06, {-28518.1, {theta -> 1.61567, Subscript[T, 1] -> 4.99939}}}, 
+{0.09, {-28518.1, {theta -> 1.61663, Subscript[T, 1] -> 4.97612}}}, 
+{0.12, {-28518.1, {theta -> 1.61557, Subscript[T, 1] -> 4.99088}}}, 
+{0.15, {-28518.1, {theta -> 1.61606, Subscript[T, 1] -> 4.99998}}}, 
+{0.18, {-28518.1, {theta -> 1.61672, Subscript[T, 1] -> 4.99992}}}, 
+{0.21, {-28518.1, {theta -> 1.61644, Subscript[T, 1] -> 4.96477}}}, 
+{0.24, {-28518.1, {theta -> 1.61528, Subscript[T, 1] -> 4.99969}}}, 
+{0.27, {-28518.1, {theta -> 1.61588, Subscript[T, 1] -> 4.99533}}}, 
+{0.3, {-28518.1, {theta -> 1.61616,Subscript[T, 1] -> 4.99928}}}}
+Should I change the limit of T1? why is it not the same as when all 3 parameters are estimated?
+Running it again with 9>T1>4 instead of 5>T1>0 
+Still failed to converge once, I am not going to wait for it to fail the other times too. Aborting.
+Running Mdor.logL for null model = -26087.0, theta = 0.957589. 
+For model with bottleneck at T1=0, logL = -26022.9, so there is support for a bottleneck right now? theta = 1.08152, b1 = 0.0859267, so quite weak bottleneck.
+Coestimating all 3 parameters for Mdor:
+{logL = -26087., {theta -> 0.957698, Subscript[b, 1] -> 0.0000218349, Subscript[T, 1] -> 4.63271}}
+b1 is really small so bottleneck strength is really weak, so no evidence for bottleneck! logL is same as for null model of unbottlenecked population, but lower than model of bottleneck at T1=0 - does this mean there is support for bottleneck at T1=0?
+No point in doing curve as no evidence for bottleneck.
+Now doing Msti.
+For null model:{logL = -26768., {theta -> 1.01564}}
+For T1=0 model: {logL = -26534.7, {theta -> 1.29298, Subscript[b, 1] -> 0.16399}} So there is support for a bottleneck at T1=0 again.
+
+27/1/17
+Full model for Msti: {logL = -26768., {theta -> 1.01561, Subscript[b, 1] -> 0.000158461, 
+  Subscript[T, 1] -> 4.99978}}
+logL is same as for null model, lower than for T1=0 model. b1 is small, T1 is right against the bound of 5, but it did not fail to converge. I am running it again with a higher bound: 9>T1>4
+Failed to converge. {logL = -26768., {theta -> 1.0153, Subscript[b, 1] -> 0.870019, 
+  Subscript[T, 1] -> 7.45835}}
+Onit:
+Null model: {logL = -24636.4, {theta -> 0.870635}}
+T1=0 model: {logL = -24204.1, {theta -> 1.39579, Subscript[b, 1] -> 0.304662}} So there is support for bottleneck at T1=0, as with Mdor and Msti.
+Full model: failed to converge again. {logL = -24647.8, {theta -> 0.875787, Subscript[b, 1] -> 0.999282, Subscript[T, 1] -> 4.99958}}
+
+2/2/17
+Ubuntu updated to 16.04 and fixed!
+I can store data for backup on a university server. Open a directory window and go Connect to Server, address is smb://csce.datastore.ed.ac.uk/csce/biology/users/s1461915
+
+3/2/17
+Running Opom in Mathematica.
+null model: {logL = -26482.1, {theta -> 1.07279}
+T1=0 model: {logL = -26482.1, {theta -> 1.07278, Subscript[b, 1] -> 2.26572*10^-8}
+Full model: {logL = -26482.1, {theta -> 1.07276, Subscript[b, 1] -> 0.0000328009, 
+  Subscript[T, 1] -> 3.39477}
+Therefore no support for a bottleneck at any time in Opom.
+Results for all species:
+Cfun: no bottleneck
+Taur: no bottleneck, failed to converge
+Ebru: bottleneck at b1 = 0.169463, T1 = 0.500202. logL curve failed to converge most times.
+Mdor: bottleneck at T1=0 but not when all parameters estimated.
+Msti: bottleneck at T1=0 but not when all parameters estimated.
+Onit: bottleneck at T1=0 but failed to converge when all parameters were estimated.
+Opom: no bottleneck.
+I have installed SLiM onto this computer (desktop) in ~/Documents/Will/simulations
+The executable slim file is in ~/Documents/Will/simulations/SLiM/bin
+The executable eidos file is in the same place.
+To run an eidos script (saved in ~/Documents/Will/simulations), do this:
+~/Documents/Will/simulations$ ./SLiM/bin/eidos ./eidos_test.txt
+And to run an eidos script in slim do this:
+~/Documents/Will/simulations$ ./SLiM/bin/slim ./slim_test.txt
+
+6/2/17
+Parameters for SLiM: theta from data, estimated as pi: 0.004932
+Ne is arbitrary, 1000 is fine
+mu from theta=4Nemu, mu = 1.233*10^-6
+still need r and chromosome length, calculated using r (dependent on s/r)
+Lynsey has r estimates. Will send them to me.
+
+7/2/17
+Lynsey has not yet sent the r estimates to me.
+I am making Mathematica notebooks for the bottleneck model for each species and running again.
+I have made a shell script to convert nton_counts_table_KL.py output into Mathematica input. Saved as nton_counts_modifier.sh in /Will/blockcutter/
+written scripts for neutral simulations in SLiM. neutral_sim.txt and neutral_sim2.txt
+in /Documents/Will/simulations/
+neutral_sim.txt is very small and instant, neutral_sim2.txt is a more realistic size and takes about 10 seconds. They both output a sample of 10 genomes in SLiM format. Could do vcf if I wanted.
+Also made one with an advantageous mutation.
+Onit Mathematica has finished running. Failed to converge, as before.
+
+8/2/17
+Run Mathematica again on Cfun and Taur. Currently running on Ebru for the logL curve.
+Made scripts for SLiM simulations for a sweep, a bottleneck and a bottleneck then sweep. Seem to work but I can't tell without plotting.
+Lynsey has sent me her recombination rate estimates:
+/Documents/Will/simulations/reco_estimates/Recombination_rates_Will_0217.xlsx
+Average is 4.372788e-9. She has also sent me a bunch of files for how she got the r estimates.
+She will come over on Monday to talk about estimates including split times and Ne estimates, see if they agree with my results.
+To run the simulation script 1000 times, use this in bash:
+parallel -j10 "slim my_eidos_script.txt > output.{}.txt" ::: $(seq 1 1000)
+
+9/2/17
+Finished running Mathematica bottleneck models for all species. Same results as before.
+Made neutral_sim.txt and bottleneck_sim.txt simulations output population size and pi for each generation. Plotted in R. See pi_plots.R and bottleneck_plot.jpeg
+
+13/2/17
+Met with Lynsey. Notes in orangutan book. rho_bp in her reco estimates xcel file is the right one to use (r). Using the mean is probably ok. 
+Ask Konrad how the blockwise reco estimation method works.
+I think I can calculate all the things I need for sweep finding methods from .vcf file output of SLiM. May take a while though.
+I should have asked Lynsey if her demography results are the same as mine.
+
+14/2/17
+I need to write a plan for collecting parasitoids: which species, how many etc and think of how many I can afford + what type of sequencing etc. I only have £1000 a year RTSG. Ask Konrad cost of sequencing. Also ask him about how the recombination estimation works, and chromosome size to simulate. 17.6 million bp?
+Genetic distance (in cM) for map file for selscan is reco rate x physical dist (in Mb), I think.
+
+15/2/17
+Found some potentially interesting parasitoids from Askew that might be worth sequencing (ask Graham about them):
+Torymus fatuosus- 2 hosts, 1 in Spain (exclusive- the one in Spain is not elsewhere and vice versa)
+Cecidostiba geganius- 3 hosts, 2 in Spain
+Aulogymnus balani- 2 hosts, 1 in Spain (exclusive)
+Aulogymnus gallarum- 36 hosts (a generalist to pair with A. balani)
+Made a soft sweep simulation script in /simulations/soft_sweep_sim.txt that does soft sweeps from standing genetic variation, conditional on establishment to freq=0.1 before becoming advantageous.
+Also made draft plan for the sweep simulation study, in /simulations/sweep_sim_study_draft_plan.odt
+Still need to find out from Konrad how the reco estimation works, length of chromosome to use and how much it costs to sequence a genome.
+
+17/2/17
+Sort out plan for sweep sims. Make plan for sampling and sequencing by next Monday (27th) when we meet with Graham.
+Sequencing cost: on HiSeq4000, 20 individual genomes at 10X coverage = 1 lane, £4000 including library prep. Could maybe get 2 lanes with funding help. =6 species with 6 individuals/species.
+Or transcriptome sequencing, on the species I already have to find genes and annotate properly, and maybe do sex biased expression stuff. Or new species- can I do it on individuals, or is there not enough RNA in 1 wasp? 
+See how many species I need to get significant correlations as in my MSc.
+
+20/2/17
+Mass of tissue required for RNAseq (according to Exiqon (2014)) is 4-5mg, which is probably too big as Drosophila is <2mg and about the same size as paras I think.
+Mean N50 for the existing wgs for my 7 species is 27911. I need to find out how much is greater than the sweep length so how much we can actually detect sweeps over. If sweep length is 1270kbp then I think our scaffolds are way too short.
+Power tests done in R (plans_and_notes/correlation_power_calc.R). With r=0.5687 (as between chemoreceptor alpha and host range as in MSc), n=13 (with 6 more species sequenced), power=0.559. This is not great, but better than original power in MSc.
+I could get transcriptome data instead, if I can do individual transcriptome sequencing.
+
+23/2/17
+Lynsey's 3 population model results:
+Cfun: W same size as anc 1 = no bottleneck
+Taur: W same size as anc 1 = no bottleneck
+Ebru: W much bigger than anc 1 (C)
+Mdor: W smaller than anc 1
+Msti: W is oldest, =anc 2 = no bottleneck
+Onit: W smaller than anc 1 (C)
+Opom: W is oldest, a bit smaller than anc (anc 2, E)
+Agreement between Lynsey and me:
+Cfun: agrees. W=anc, no bottleneck
+Taur: agrees. W=anc, no bottleneck
+Ebru: ? W>>anc, bottleneck 37mya (T1=0.5, Ne West=73996000, generations=0.5*2Ne = Ne generations ago, 2 generations/year = 36998000 years (using Lynsey's Ne)
+Mdor: maybe agrees. W<anc, bottleneck at T1=0
+Msti: not really. W=anc, bottleneck at T1=0
+Onit: maybe agrees. W<anc, bottleneck at T1=0
+Opom: maybe agrees. W slightly(1/3) less than anc, no bottleneck
+Ebru time estimate using my Ne from theta from Mathematica: theta=1.82274, mu=3.5e-9, theta=4Nemu*block length(223), Ne=583837.2838, T1=583837.2838 generations = 291918.6 years. Much better, but still confusing to reconcile with Lynsey's model.Ne slightly > ancestor. Bottleneck strength (b1=0.169463) not huge.
+
+8/3/17
+Re-calculating simulation parameters:
+Using a Ne = 1000, everything is easier. Carolina used Ne=1000 even though Ne of wild mice =580000. Estimate theta from real data, and fix other parameters to match.
+My pi per site estimate averaged across all species is 4.9319549e-3, which agrees well enough with theta estimated from Mathematica. Using this pi as theta and Ne=1000, theta=4Nemu so mu=1.233e-6.
+reco: rho=4Ner. rho from data: r estimated by Lynsey and averaged across all of my species is 4.37e-9, so if Ne=500,000 rho=8.74e-3. Then using Ne=1000, r=2.185e-6.
+Chromosome length: pi(x)=[1-(4Nes)^(-2rx/s)]*4Nemu. If Ne=1000, s=0.01 and pi(x)=0.99*4Nemu, x=2856.7, so 2x=5713.47 which is length of sweep region so a 100kb chromosome is plenty. 10kb might also be enough, but maybe stay on the safe side and use 100kb?
+Replications: if I want to simulate a whole genome length, I can replicate 3000 times as 3000*100kbp = 300Mbp = genome size.
+I am now simulating a neutral population with the above parameters to get pi for each generation to get burn in required. Completed! took 4.5 hours. neutral_pi2.csv
+I also need to make a simulation that outputs, at the moment a sweep completes, frequency of each mutation so I can calculate (in R) pi for each site and see how wide a sweep is and therefore see if my chromosome size is reasonable.
+
+9/3/17
+burn in required appears to be about 10N (10000 generations) (see neutral_sim_burn_in.jpeg - vertical line is 10000 generations). Mean pi after this is 0.004911777 which is close to the pi of 0.0049319549 that I started with to get mu etc (average pi per site across species).
+Full output for a sweep simulation (sweep_sim.txt) is in sweep_full.txt. I have tried getting a plot of diversity along the chromosome to show the trough due to the sweep, but I don't know how to.
+
+10/3/17
+I have been trying to making a plot of diversity along the chromosome by splitting it into windows and calculating pi in each window, but it doesn't look right. There is loads of variability in pi between windows, when it should all be about the same and reduced around the sweep. I don't know why. R script in pi_plots.R.
+I have tried with different window sizes, doesn't make a difference.
+Either my simulation is somehow screwy (eg mutation rate too high obscuring signal, selection not strong enough etc), or my R calculations are wrong, or the concept is wrong somewhere.
+when I divide the pi estimates by the number of sites (variant+invariant) I get 0.00503 which is about what pi should be (0.0049319549) so my pi calculations are probably right. 
+Why is pi so variable?
+
+15/3/17
+I have amended and expanded upon my questions for the selection study (in Selection_study_questions.docx).
+I have found data on genes in immunity pathways in several species including Nasonia vitripennis, Apis melifera, Drosophila melanogaster and Anopheles gambiae on the website http://bordensteinlab.vanderbilt.edu/IIID/test/nasonia.php
+I could use these genes as candidate sets.
+
+29/3/17
+I now have a new plan. I am going to look for DE genes between paras reared on different host species, to use as a more justified candidate gene set in which to look for selection, and to suggest imprinting and coevo. There is good data on DE genes between cactus host in D. mojavensis so I shall have a look at this first. DE genes have already been identified so all I need to do is look for selection.
+First I need to write a proper plan about the parasitoids on which species I want to sample, sequencing, expected gene sets(?) etc.
+Met with Konrad yesterday (28/3/17) to talk about Mathematica. I am now fitting a step change model for each species so I can compare to the bottleneck model and see which is best. I also need to run PSMC (Li&Durbin) to compare that, which is a Bayesian method so not parametric so you can't statistically compare things. File for step change model is Step_Change_model2_March2017.nb. I need to use a newer version of FileS1, Lynsey has given me the version from October2016 instead of 7/5/2016 and it works.
+I am now trying to fit the model to Opom data, but T is coming out very close to 0 but the logL is better when T is estimated than when set to 0, so I don't know what is going on. Will try to plot logL curve of other parameters tomorrow.
+I need to write the para DE plan and finish Mathematica (and preferably PSMC) model fitting before Konrad gets back from America in 3 weeks.
+
+30/3/17
+Ebru has no evidence of a step change. Full model has same logL as null model:
+logL=-28518.1, theta=1.61603
+Opom may just have no evidence for step change too. T is either really high (~1) or really low (0.01 or 1e-8). When upper bound on T is 0.98, theta and lambda are ~1 and T hits the bound. logL=-26480.4. When upper bound on T is 0.99, it fails to converge and T is very small (~0.01) and theta and lambda are high.
+Cfun appears to have no evidence of a step change. The full model has the same logL as the null model. However, when plotting the likelihood curves across values of T, there seems to be a likelihood peak at T=4. This could be due to lambda reaching 0 and truncating the curve when it would otherwise continue indefinitely, indicating no signal of a step change in the data.
+
+31/3/17
+Onit does seem to have a step change, at logL=-24142.1, theta=0.380999, lambda=0.24511, T=0.68284. Marginal logL curves look good.
+Taur also seems to have a step change, but the marginal logL curve is very flat at the top. theta=4.60327, lambda=2.44719, T=0.124307, logL=-29841.9. Ne=1.00245e-6, time in years=124612. logL definitely higher than null model.
+Mdor does not seem to have a step change, logL increases as all parameters get smaller but there is no peak- parameters just run into the lower bound of 0.
+Msti is virtually identical to Mdor. Does not seem to have a step change, logL increases as all parameters get smaller but there is no peak- parameters just run into the lower bound of 0.
+I have also checked Opom again. It doesn't look like there is a step change, logL just keeps increasing as parameters increase. It does not look anything like Onit.
+Finished all step change models. Results in stepchange_parameter_estimates.csv in mathematica_bottlenecks. Only Taur and Onit showed step changes, at 125000 and 32000 years ago respectively. Their lambdas are in opposite directions: 2.4 compared to 0.25.
+Now to check bottleneck models and compare.
+Taur and Onit are the only ones that failed to converge with the bottleneck model- is this significant? Trying to make them work.
+
+4/4/17
+I am re-running a bunch of the bottleneck models to try to get them to converge. The Onit curve converges but looks like logL just increases until T hits 0, so no bottleneck. Running Taur curve now.
+I should run the full models for Mdor and Msti again with higher bounds for T (10 instead of 5), and also the full model for Onit with 0.2>T>0 as that is the interesting bit of the curve where T is close to 0.
+Started planning write up for bSFS demography study.
+
+10/4/17
+I have re-run all of the necessary bottleneck models. Taur and Onit do have a bottleneck! Full model is best for Taur, Onit and Ebru, T=0 model best for Mdor and Msti, null model best for the others.
+I have made a new notebook for Ebru as the old one doesn't open properly. Now running the models again to make sure and get a curve. bottleneck_model_Ebru3.nb
+
+11/4/17
+Ebru looks the same as I had it before. Running curve again now with (T,0.4,0.6,0.02) to get a better resolution of the peak at T=0.5.
+I have started writing the introduction to the bSFS population history mathematica stuff. Saved in mathematica_bottlenecks/bSFS_pop_history_writeup.odt
+
+12/4/17
+Ebru curve finished, looks good though still strangely pointy and skewed for theta (also skewed for B but smooth)
+
+21/4/17
+I have written intro and methods (for what I have done so far) for the bSFS population history write up. In mathematica_bottlenecks/bSFS_pop_history_writeup.odt
+Trying now to do a model in Mathematica of 2 step changes, but I can't work out how to do the multidimensional inverse Laplace transform. I think most of it is right but I don't know what the correct expression to give it is.
+I will just do the 2 step model for those species which have a significant 1 step model.
+Re-running bottleneck model for Mdor as it looks like it might be significant(?) But didn't converge for the full model.
+
+24/4/17
+Met with Konrad, who is back from his holiday. Sent him my draft write up. He likes the bits about the bSFS methods but for a paper a large part of the intro (and detail of methods) is unnecessary. He has sent me a version of the 2 step change .nb which should work.
+I am running the Mdor logL curve again to check closer to T=0, but the curve now looks OK. T=0 model may be correct and there has been a recent bottleneck. 
+Konrad doesn't like the imprinting idea now so I need to think of something else.
+For pop history stuff it might be better to only use non coding parts of the genome as there will be more mutations and mutation rate will be closer to the estimate I am using which is a neutral estimate. Research how to find coding sequence using Augustus etc. 
+Also do PSMC.
+
+25/4/17
+Mdor bottleneck logL curve {T,0,0.1,0.01} has finished and converged. It looks smooth and nice but T=0 is the peak logL. Theta and b1 curves are sideways. I think I should accept that there is support for a bottleneck at T=0.
+Tried to get GF for 2x step change model, but can't get it to work for n=5 (n=4 works fine). Konrad is going to look at it.
+Jack is going to send me bam files for Cfun so I can do PSMC, but they are not the finished versions as he is redoing them or something.
+
+26/4/17
+The 2 step changes model in Mathematica does not work for 5 individuals as the GF is too big. I will have to do it with 4, including all of the blockcutting.
+Blockcutting process: make combined bed file (SelectQuadtuplets.sh), make loci.txt file, find block lengths using pairwise_diffs.py, blockcutter (block_cutter_vcf.py), nton_counts_table_KL.py, sed (23/1/17)
+I have modified SelectQuintuplets.sh to do the same for 4 individuals, called SelectQuadtuplets.sh.
+I need to work out/ask someone which are the best quality individuals to use. They all seem to be sampled from a small area in central Spain so geographically it probably doesn't matter too much.
+I have downloaded PSMC to gallstone/PhD/home/ so I can try it out when Jack sends me a bam file. See if the choice of individuals with regards to their sampling location within Spain makes a difference to PSMC.
+
+27/4/17
+I have copied the step change mathematica notebooks to gallstone for safe keeping. I should do the same for the bottleneck ones.
+I have made new combined bed files for 4 individuals for all 7 species, usually exluding the individual that was the outlier geographically in order to reduce chance of population structure in the samples as they were not spread evenly around Spain. They are mostly in central Spain around Madrid, with the occasional one in Portugal.
+If there was no obvious outlier I removed ones that did not have location information or at random if I had to. I could find quality info from bam files but Jack has not sent them to me yet.
+I only need to do one species for 2xStepChange model for now as Jack is redoing the variant calling or something anyway and then I might have something to show Konrad tomorrow if I can get it through Mathematica.
+Doing blockcutting process on Onit:
+Used pairwise_diffs.py to find block length of 660
+Used block_cutter_vcf.py for block cutting
+Used nton_counts_table_KL.py for counting singletons and doubletons
+Used sed commands for formatting for Mathematica (I should really make this into a script):
+xargs -n5 < Onit_nton_counts_4.txt > Onit_nton_counts_4_s2.txt
+cut -d ' ' -f4- Onit_nton_counts_4_s2.txt | sed 's/\}//2' | sed 's/,//2' > Onit_nton_counts_4_s3.txt
+sed "s/$/,/g" Onit_nton_counts_4_s3.txt | sed "1s/^/\{/" | sed '$ s/.$//' > Onit_nton_counts_4_s4.txt
+So that final version for Mathematica is Onit_nton_counts_4_s4.txt
+I have made the GF for the 2xStepChange model in Mathematica for 4 individuals. Trying to work out how to run the model.
+Jack has put the BAM files for Onit and Opom in my folder on gallstone.
+
+28/4/17
+Trying to convert BAM file from Jack into fastq file for PSMC.
+First I need to extract just 2 individuals and make a new BAM file for just them. Using:
+samtools view -bhR Onit_RG_IDs_388.793.txt Onit.combined.sorted.BWA.paired.markDups.bam > Onit.combined.sorted.BWA.paired.markDups.388.793.bam 
+Where Onit_RG_IDs_388.793.txt is a file containing RG (read group) IDs for the individuals Onit388 and Onit793.
+Then I can use:
+samtools fastq Onit.combined.sorted.BWA.paired.markDups.388.793.bam > Onit.combined.sorted.BWA.paired.markDups.388.793.fastq
+To convert this into a fastq file.
+Both steps took a few minutes. (On gallstone, but Jack is doing stuff on it too so that might have slowed it down)
+Now trying to convert .fq file to psmcfa format. Tried using PATH/psmc/utils/fq2psmcfa file.fq > file.psmcfa but it outputs an empty file. Now trying to convert .fq into .fq.gz and trying the same again.
+
+1/5/17
+Converting .fq or .fq.gz to .psmcfa still doesn't work and only gives an empty file.
+Used this:
+bcftools view -Oz -s Onit388,Onit793 Onit.calibrated_haploid.filtered_variants.vcf.gz > Onit.calibrated_haploid.filtered_variants.388.793.vcf.gz
+To make a .vcf file for just the 2 individuals 388 and 793, but I don't think this will help as the .vcf is still made by GATK.
+I could try making separate bam files for each individual, then make separate fq files for each, then combine them into one fq file using seqtk mergefa -hq20 388.fq.gz 793.fq.gz, then convert this to psmcfa using fq2psmcfa -q30
+making individual bam files now, using:
+samtools view -bhR Onit_RG_IDs_388.txt Onit.combined.sorted.BWA.paired.markDups.bam > Onit.combined.sorted.BWA.paired.markDups.388.bam
+and equivalent for Onit793.
+
+2/5/17
+Now making .fq files from the individual bam files, using:
+samtools fastq Onit.combined.sorted.BWA.paired.markDups.388.bam > Onit.combined.sorted.BWA.paired.markDups.388.fq
+and equivalent for Onit793.
+Now gzipping them with:
+gzip Onit.combined.sorted.BWA.paired.markDups.388.fq > Onit.combined.sorted.BWA.paired.markDups.388.fq.gz
+and equivalent for Onit793
+Now combining them into one fq file using:
+PATH/seqtk mergefa -hq20 Onit.combined.sorted.BWA.paired.markDups.388.fq.gz
+ Onit.combined.sorted.BWA.paired.markDups.793.fq.gz > Onit.combined.sorted.BWA.paired.markDups.mergefa.388.793.fq.gz &
+Which may or may not have worked. Gave some messages about sequences not being the same length or having different names or something.
+Anyway, I am now converting it to .psmcfa using:
+/data/home/s1461915/PhD/psmc/utils/fq2psmcfa -q30 Onit.combined.sorted.BWA.paired.markDups.mergefa.388.793.fq.gz > Onit.combined.sorted.BWA.paired.markDups.mergefa.388.793.psmcfa &
+It has made an empty file again.
+Trying again with -q10. Still empty file. Must be something wrong with the .fq file.
+Use: 
+gzip -cd <file> | less
+to view a gzipped file
+*******************************
+Trying to get 2xStepChange model in Mathematica to work (with 4 individuals).
+Run notebook under File_S1_Overview and definitions_Oct2016_fixed.nb instead of the 07_05_2016 version and it works!
+null model where T1 and T2 are set to 0 and lambda1 and lambda2 are set to 1 takes ages (318 seconds) but does work. Now trying model of 1 step change (T1=0 and lambda1=1 but T2 and lambda2 are estimated) to compare it to the normal 1xStepChange model with 5 individuals. This may take a while longer.
+
+3/5/17
+2xStepChange model with only 1 step change (T1 set to 0 and lambda1 set to 1) gave a step change at T=0.476, lambda=0.1099 and theta=0.183. This is slightly different to the normal 1xStepChange model with 5 individuals (T=0.683, lambda=0.245, theta=0.381).
+Full 2xStepChange model with 2 step changes seems to work but didn't converge and took 11 hours. 
+1xStepChange model with 4 individuals gives same result as 2xStepChange model with 4 individuals when the second step change is set to null. Good that the models are consistent with 4 individuals, but strange that with 5 it is different.
+Use this:
+samtools view file.bam | less
+to view a .bam file (-H shows header as well)
+My .bam file is made by paired end reads
+I have installed bedtools 2.26.0 in /data/home/s1461915/PhD/bedtools2
+Now using:
+/data/home/s1461915/PhD/bedtools2/bin/bedtools bamtofastq -i Onit.combined.sorted.BWA.paired.markDups.388.793.bam -fq Onit.combined.sorted.BWA.paired.markDups.388.793.end1.fq -fq2 Onit.combined.sorted.BWA.paired.markDups.388.793.end2.fq &
+to convert bam file of the 2 individuals into 2 fq files, one for each end as the data is paired end.
+Now trying to sort the bam files first as they may not be sorted with paired reads next to each other- the above command gave lots of errors about reads not being next to each other. using this:
+samtools sort -n Onit.combined.sorted.BWA.paired.markDups.388.793.bam -T Onit.combined.sorted.BWA.paired.markDups.388.793.temp -o Onit.combined.sorted.BWA.paired.markDups.388.793.qsort &
+***********************
+maybe not right^
+now trying to do it how it says in the PSMC readme, with the fasta reference sequence, using:
+samtools mpileup -C50 -uf Onit.scaffolds.fasta Onit.combined.sorted.BWA.paired.markDups.388.793.bam | bcftools view -c | vcfutils.pl vcf2fq -d 10 -D 100 | gzip > Onit.388.793.fq.gz
+^this doesn't work either. I may have to do this separately for each individual, then merge them using this:
+seqtk mergefa -hq20 sample1.fq.gz sample2.fq.gz | fq2psmcfa -q30 - > input.psmcfa
+the bcftools view -c bit (in the samtools mpileup pipe) didn't seem to be working so I have used bcftools call -c instead which may be working better?
+Also re-running the full 2xStepChange model in mathematica with adjusted parameter boundaries: 1.9>theta>0.01&&1.9>lambda1>0.01&&T2>T1>0&&1.9>lambda2>0.01&&4.9>T2>T1
+
+4/5/17
+I have used this:
+samtools mpileup -C50 -uf Onit.scaffolds.fasta Onit.combined.sorted.BWA.paired.markDups.388.bam | bcftools call -c | vcfutils.pl vcf2fq -d 10 -D 100 | gzip > Onit.388.fq.gz
+Which is similar to what it says in the PSMC README but for one individual instead of 2 and with bcftools call -c instead of bcftools view -c -. I will now do this for the other individual and then merge them using the seqtk command as in the Heng Li help thread thing. It took a long time (~17 hours) but has given some output. I don't know if it is right though.
+I have modified my nton_counts_table_KL.py script in a new script called nton_counts_combos.py to allow you to subsample randomly within 1 population. It is not finished just yet but getting there.
+
+5/5/17
+I have finished nton_counts_combos.py.
+I have also modified nton_counts_modifier.sh, called nton_counts_modifier2.sh to include the xargs bit. I have also made a new one that works for my subsampled data (Onit_nton_counts_combos.txt), and made from this a .txt file that works as input for Mathematica called Onit_nton_counts_combos_math.txt.
+I have run this through Mathematica, by flattening, running configCounts and dividing this whole table by 5, I then ran it on the 1xStepChange model and am currently running it on the 2xStepChange model. Results seem to be similar but not identical to the standard sampling scheme of 4 individuals.
+Notebooks are called Step_Change_x1.4_combos_May2017.nb and Step_Change_x2_combos_May2017.nb.
+The pipeline for snp calling and making fq.gz files for PSMC has finished, I now need to combine the 2 files.
+I just tried combining files. It has given loads of error messages. Now going home.
+
+8/5/17
+Combining files for psmc hasn't worked. Gave empty file and error messages saying hardware error with gallstone I think. So maybe it was not my fault? Or I have broken gallstone? Also error messages before that saying Unequal sequence length and different sequence names, so maybe the files are not sorted properly? But the first few sequences seem to be the same so I don't know.
+I have done the seqtk mergefa bit separately and it seems to work, although it does give lots of 'Unequal sequence length' and 'different sequence names' errors again. Tried fq2psmcfa and it doesn't work. Stops immediately and gives empty file.
+Tried the same on linda instead of gallstone and the same thing happens.
+Step_Change_x2_combos full model did not converge to requested accuracy or precision within 150 iterations, now trying to run a curve along values of theta. 
+This has given lots of 'not a real number' errors and failed to converge. Took about 3 hours. Trying again with T2<2.9 instead of T2<4.9. Same happened again. Trying with 3.9>lambda1 and 3.9>T2.
+
+9/5/17
+Step_Change_x2_combos still not converging and giving not a number errors whatever parameters I give it. Looks like logL just increases with theta up to plateau at ~ -21795.
+PSMC: I have checked the quality of the Onit.388.fq.gz files using seqtk fqchk and they seem ok- %high is 93 or 94.
+There is not the same number of contigs in each fq.gz file, so I have found which ones are in both and the list of names are in the file Onit.388.headers.both.txt. I now need to get the sequence and quality info for each individual as well, but this is proving difficult. Maybe use seqtk subseq in.fq name.lst > out.fq, but I don't know how and it doesn't work if you just rename .txt to .lst.
+
+10/5/17
+Got seqtk subseq to work! I just needed to remove the @ at the start of each line of the .lst file, then: 
+seqtk subseq Onit.388.fq.gz Onit.headers.both.lst > Onit.388.both.fq
+and the same for Onit.793.fq.gz, and gzip them. Then do:
+seqtk mergefa -hq20 Onit.388.both.fq.gz Onit.793.both.fq.gz > Onit.388.793.both.fq
+But, Onit.388.793.both.fq doesn't seem to have quality info (should it or not?) and most of the bases are lower case indicating low quality. Used this:
+grep -o [ATCG] Onit.388.793.both.fq | wc -l
+grep -o [atcg] Onit.388.793.both.fq | wc -l
+to find the numbers of each, which are 4289285 and 212880341 respectively. This may be why fq2psmcfa gives a really small file as output with only 12 short sequences in it when I do this:
+fq2psmcfa -q20 Onit.388.793.both.fq > Onit.388.793.psmcfa
+Used this:
+samtools depth -a Onit.combined.sorted.BWA.paired.markDups.388.bam | awk '{sum+=$3} END { print "Average = ",sum/NR}'
+and same for Onit.combined.sorted.BWA.paired.markDups.793.bam to find average read depth, which is given as 6.58747 and 6.7423 respectively, which is obviously much too small for the -d10 -D100 parameters that I gave it before which will have put most as lower case.
+I need to do this:
+samtools mpileup -C50 -uf Onit.scaffolds.fasta Onit.combined.sorted.BWA.paired.markDups.388.bam | bcftools call -c | vcfutils.pl vcf2fq -d 3 -D 30 | gzip > Onit.388.2.fq.gz &
+again, and for Onit793. These took ~17 hours last time. Each. Using -D30 as only 2x average seems very small, and other people recommend 10x or 3-5x. ~5x average coverage (-D30) seems reasonable. It is for memory considerations and to avoid regions with abnormally high coverage eg PCR amplification errors.
+Then I need to find names of contigs that are in both files using:
+gzip -cd Onit.388.2.fq.gz | grep '@NODE' > Onit.388.2.contigs.txt
+gzip -cd Onit.793.2.fq.gz | grep '@NODE' > Onit.793.2.contigs.txt
+diff Onit.388.2.contigs.txt Onit.793.2.contigs.txt | grep '@NODE' | sed 's/^.//' > Onit.388.793.2.contigs.diff.txt
+Then sort Onit.388.793.2.contigs.diff.txt and Onit.388.2.contigs.txt and call new files file.sorted.txt
+Then find all of the contigs that are in Onit.388.2.fq.gz but not in Onit.388.793.2.contigs.diff.txt using:
+comm -13 Onit.388.793.2.contigs.diff.sorted.txt Onit.388.2.contigs.sorted.txt | sed 's/^.//' > Onit.2.headers.both.lst
+(where the sed bit removes @ at the start of each line for the next bit). Then:
+/data/home/s1461915/PhD/seqtk/seqtk subseq Onit.388.2.fq.gz Onit.2.headers.both.lst > Onit.388.2.both.fq
+/data/home/s1461915/PhD/seqtk/seqtk subseq Onit.793.2.fq.gz Onit.2.headers.both.lst > Onit.793.2.both.fq
+Then gzip them, then merge them with:
+/data/home/s1461915/PhD/seqtk/seqtk mergefa -hq20 Onit.388.2.both.fq.gz Onit.793.2.both.fq.gz > Onit.388.793.2.both.fq
+then convert to psmcfa using this:
+fq2psmcfa -q20 Onit.388.793.2.both.fq > Onit.388.793.2.psmcfa
+^I think this is what I did before but I may have missed something.
+
+11/5/17
+I should have used -d 2 for vcfutils.pl vcf2fq. 6/3 is 2, not 3 you berk.
+samtools mpileup has finished for Onit388 (with -d3), I am running it again with -d2, saving it as Onit.388.3.fq.gz. Do Onit793 tomorrow hopefully.
+Met with Konrad. He likes my idea of looking at gene duplications!
+He has given me a script (pop1_block_sims.py) to do simulations with msprime which also does blockcutting and subsampling and outputs it in Mathematica readable format. 
+He has also given me a Mathematica .nb to manipulate output of this in M (msprime_Sims.nb) so I can run bottleneck models with it to compare it to real data.
+There is also a script (pop1_block_data.py) to do the same as pop1_block_sims.py but for real data, this is so both can be done with the same basic script so there are no differences if I use my script for real data.
+
+12/5/17
+Ran the pop1_block_sims.py simulation script as so:
+./pop1_block_sims.py 200 200 1000 4 5 > msprime_Sims_test2.txt
+So block length = window length so no recombination, and 1000 replications.
+
+15/5/17
+Combining files may not have worked, one of them has more contigs than the other for some reason. Now doing it another way, by combining both contigs.txt files (Onit.388.3.contigs.txt) into 1 file (Onit.388.793.3.contigs.txt), then sorting it and putting into Onit.388.793.3.contigs.sorted.txt, then doing uniq -d to print only repeated lines and putting into Onit.388.793.3.contigs.unique.txt
+Then removed @ at the start and renamed Onit.3.headers.both.2.lst so I can do seqtk subseq:
+/data/home/s1461915/PhD/seqtk/seqtk subseq Onit.388.3.fq.gz Onit.3.headers.both.2.lst > Onit.388.3.both.2.fq
+/data/home/s1461915/PhD/seqtk/seqtk subseq Onit.793.3.fq.gz Onit.3.headers.both.2.lst > Onit.793.3.both.2.fq
+Then gzip them, then merge them with:
+/data/home/s1461915/PhD/seqtk/seqtk mergefa -hq20 Onit.388.3.both.2.fq.gz Onit.793.3.both.2.fq.gz > Onit.388.793.3.both.2.fq
+then convert to psmcfa using this:
+fq2psmcfa -q20 Onit.388.793.3.both.2.fq > Onit.388.793.3.2.psmcfa
+Then running PSMC exactly as it is in the README:
+psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o Onit.388.793.3.2.test.psmc Onit.388.793.3.2.psmcfa
+plotting with this:
+/data/home/s1461915/PhD/psmc/utils/psmc_plot.pl Onit.388.793.3.2.testplot Onit.388.793.3.2.test.psmc
+did not work on gallstone as I need gnuplot for it- so do it on linda instead.
+
+18/5/17
+I have downloaded PSMC into linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks/PSMC_pop_hist/ so I can plot with gnuplot:
+./psmc/utils/psmc_plot.pl Onit.388.793.3.2.testplot Onit.388.793.3.2.test.psmc
+This outputs 2 files, Onit.388.793.3.2.testplot.par and Onit.388.793.3.2.testplot.eps
+The .eps file gives a graph and can be opened with LibreOffice Draw.
+The .par file is parameters I think.
+The plot has axis labels saying that generation time is 25 years and mu=2.5e-8 so I think it is set for humans or something. I should have specified these when doing psmc_plot.pl, like this:
+./psmc/utils/psmc_plot.pl -u 3.5e-9 -g 0.5 -p Onit.388.793.3.2.testplot Onit.388.793.3.2.test.psmc
+This gives a pdf of the plot as well as an eps file.
+Seems to maybe agree with the step change model of Onit? Ne=~40000, T=~30000, but in PSMC it is a smooth change in Ne, and not so large. (PSMC lambda=~0.325, Mathematica lambda=0.24511).
+Now to bootstrap to get measure of confidence of this.
+Using splitfa to split the psmcfa file into blocks (on gallstone):
+/data/home/s1461915/PhD/psmc/utils/splitfa Onit.388.793.3.2.psmcfa > Onit.388.793.3.2.split.fa
+And bootstrapping in parallel:
+nohup parallel -j10 --nice 19 "/data/home/s1461915/PhD/psmc/psmc -N25 -t15 -r5 -b -p "4+25*2+4+6" Onit.388.793.3.2.split.fa -o round-{}.psmc" :::: <(seq 100) &
+Maybe next simulate a dataset with the same parameters as estimated by the Step_Change (and then bottleneck?) model in Mathematica and run PSMC on it to see how it would look in PSMC?
+This:
+utils/psmc2history.pl diploid.psmc | utils/history2ms.pl > ms-cmd.sh
+Generates the ms command line to simulate the history inferred by PSMC, but I want the history inferred by Mathematica.
+
+19/5/17
+PSMC bootstraps have finished in gallstone. I have combined them all into 1 file with the real run:
+cat Onit.388.793.3.2.test.psmc round-*.psmc > combined.psmc
+and copied it into linda so I can plot it like this:
+./psmc/utils/psmc_plot.pl -u 3.5e-9 -g 0.5 -p combined combined.psmc
+to make a file combined.pdf which looks good. There is also combined.eps and .par.
+I now need to do the same PSMC thing with 2 different individuals of Onit to see if that makes a difference, then do the same on the other species. I should make it all into a script. This is the basic outline:
+Make files with read group (RG) ids for the 2 individuals, from full bam file. View bam with this:
+samtools view -h Onit.combined.sorted.BWA.paired.markDups.bam | grep '@RG' | less
+Use nano to make txt files.
+Make individual bam files:
+samtools view -bhR Onit_RG_IDs_388.txt Onit.combined.sorted.BWA.paired.markDups.bam > Onit.combined.sorted.BWA.paired.markDups.388.bam
+samtools view -bhR Onit_RG_IDs_793.txt Onit.combined.sorted.BWA.paired.markDups.bam > Onit.combined.sorted.BWA.paired.markDups.793.bam
+Find average read depth for each individual:
+samtools depth -a Onit.combined.sorted.BWA.paired.markDups.388.bam | awk '{sum+=$3} END { print "Average = ",sum/NR}'
+samtools depth -a Onit.combined.sorted.BWA.paired.markDups.793_.bam | awk '{sum+=$3} END { print "Average = ",sum/NR}'
+Call SNPs and make .fq.gz file:
+samtools mpileup -C50 -uf Onit.scaffolds.fasta Onit.combined.sorted.BWA.paired.markDups.388.bam | bcftools call -c | vcfutils.pl vcf2fq -d 2 -D 30 | gzip > Onit.388.3.fq.gz &
+samtools mpileup -C50 -uf Onit.scaffolds.fasta Onit.combined.sorted.BWA.paired.markDups.793.bam | bcftools call -c | vcfutils.pl vcf2fq -d 2 -D 30 | gzip > Onit.793.3.fq.gz &
+I am trying to parallelise this to do both at once using this:
+nohup parallel -j10 --nice 19 "samtools mpileup -C50 -uf Onit.scaffolds.fasta Onit.combined.sorted.BWA.paired.markDups.{}.bam | bcftools call -c | vcfutils.pl vcf2fq -d 2 -D 30 | gzip > Onit.{}.fq.gz" ::: 171 350 &
+Then find names of contigs that are in both files using:
+gzip -cd Onit.388.3.fq.gz | grep '@NODE' > Onit.388.3.contigs.txt
+gzip -cd Onit.793.3.fq.gz | grep '@NODE' > Onit.793.3.contigs.txt
+Combine the contig names into 1 file (see 24/5/17 for commands combined into pipe):
+cat Onit.388.3.contigs.txt Onit.793.3.contigs.txt > Onit.388.793.3.contigs.txt
+Sorting it:
+sort Onit.388.793.3.contigs.txt > Onit.388.793.3.contigs.sorted.txt
+Print only repeated lines (shared contigs):
+uniq -d Onit.388.793.3.contigs.sorted.txt > Onit.388.793.3.contigs.unique.txt
+Remove @ at the start of each line:
+sed 's/^.//' Onit.388.793.3.contigs.unique.txt > Onit.3.headers.both.2.lst
+Subsample the fq.gz file to get a file that only contains shared contigs:
+/data/home/s1461915/PhD/seqtk/seqtk subseq Onit.388.3.fq.gz Onit.3.headers.both.2.lst > Onit.388.3.both.2.fq
+/data/home/s1461915/PhD/seqtk/seqtk subseq Onit.793.3.fq.gz Onit.3.headers.both.2.lst > Onit.793.3.both.2.fq
+Then gzip them:
+gzip Onit.388.3.both.2.fq
+gzip Onit.793.3.both.2.fq
+Merge them with:
+/data/home/s1461915/PhD/seqtk/seqtk mergefa -hq20 Onit.388.3.both.2.fq.gz Onit.793.3.both.2.fq.gz > Onit.388.793.3.both.2.fq
+then convert to psmcfa using this:
+/data/home/s1461915/PhD/psmc/utils/fq2psmcfa -q20 Onit.388.793.3.both.2.fq > Onit.388.793.3.2.psmcfa
+Then running PSMC exactly as it is in the README:
+/data/home/s1461915/PhD/psmc/psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o Onit.388.793.3.2.test.psmc Onit.388.793.3.2.psmcfa
+Copy to linda:
+scp Onit.388.793.3.2.test.psmc linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks/PSMC_pop_hist/
+Plot:
+./psmc/utils/psmc_plot.pl -u 3.5e-9 -g 0.5 -p Onit.388.793.3.2.testplot Onit.388.793.3.2.test.psmc
+Use splitfa to split the psmcfa file into blocks (on gallstone):
+/data/home/s1461915/PhD/psmc/utils/splitfa Onit.388.793.3.2.psmcfa > Onit.388.793.3.2.split.fa
+And bootstrapping in parallel:
+nohup parallel -j10 --nice 19 "/data/home/s1461915/PhD/psmc/psmc -N25 -t15 -r5 -b -p "4+25*2+4+6" Onit.388.793.3.2.split.fa -o round-{}.psmc" :::: <(seq 100) &
+Combine them all into 1 file with the real run:
+cat Onit.388.793.3.2.test.psmc round-*.psmc > combined.psmc
+Copy it into linda again and plot it like this:
+./psmc/utils/psmc_plot.pl -u 3.5e-9 -g 0.5 -p combined combined.psmc
+
+21/5/17
+Continuing through the pipeline above to do PSMC on Onit171 and Onit350.
+Average read depth of Onit171 = 6.78992, Onit350 = 5.89856. Found using this:
+samtools depth -a Onit.combined.sorted.BWA.paired.markDups.171.bam | awk '{sum+=$3} END { print "Average = ",sum/NR}'
+Finished running PSMC and plotting with Onit171 and Onit350. The plot looks very similar to the Onit388.793 plot, but not identical. Not bothering to bootstrap.
+
+22/5/17
+Hannes has helped me with Mathematica. I didn't need the // Total bit in 
+testtab = likFullTab[Step4GFsolEInv // Total, \[Omega], 0.005613, {T1 -> 0.12328, \[Lambda]1 -> 0.5}, 3]
+To generate the table from the GF. This table is probabilities, not counts so should sum to 1.
+The tt3 table is counts, but needed to be divided by 1000 which is the number of blocks to be equivalent to the testtab table of probabilities. It is still not quite the same, I think either due to the model not fitting properly or not enough replications (or both).
+The tables are 5x5 not 4x4 as the last entry in each row/column is >kmax. So 0,1,2,3,3+.
+Real numbers are mathematica numbers x 2Ne.
+T1 should be 0.12328 not 0.24 as it was as I had to /2 for years not generations. 
+I don't know what the Mathematica theta is. This is confusing.
+If I put theta in testtab in Mathematica equal to 1, it gives a table very similar to the one from the simulated data (tt3).
+In any case, I still can't get the model to detect a step change properly.
+
+23/5/17
+Theta in mathematica is real theta*block length. So 0.005613*200=1.1226.
+This gives a testtab table of probabilities very similar to the tt3 table of counts. I have plotted them against one another in mathematica_bottlenecks/stepchange_simcounts_probabilities.jpeg (using R).
+Now I am simulating with pop1_block_sims.py again:
+./pop1_block_sims.py 660 660 1000 4 5 > msprime_Sims_Onitstep.txt &
+So replicating the real Onit data with parameters as inferred by Mathematica: block length is for 4 indivs (660), recr = 0, scal = 0.24511, Ne = 4.69775e4, T_bott = 6.41552e4, mu = 3.46e-9. 
+Then I will see if Mathematica can recover the step change.
+It can! New notebook msprime_Sims_Onit.nb, gives parameters: theta=0.41605, lambda=0.243522, T=0.6431.
+But curves, especially T, are pretty flat.
+
+24/5/17
+doing PSMC on Opom314 and Opom344 as these have 6.1 and 7.4 average read depth respectively.
+Following pipeline described in 19/5/17.
+To create the file of shared contigs I combined commands into a pipe:
+cat Opom.314.contigs.txt Opom.344.contigs.txt | sort | uniq -d | sed 's/^.//' > Opom.314.344.contigs.shared.lst
+Finished the simple PSMC for Opom314 and Opom344. Now bootstrapping.
+
+25/5/17
+bootstapping Opom314 and Opom344 has finished.
+Now trying to use msHOT-lite to simulate for PSMC.
+Downloaded (with git clone https://github.com/lh3/foreign.git) msHOT-lite into linda/blockcutter.
+Used this:
+./msHOT-lite 2 100 -l -t 6.5 -eN 0.3414 4.08 >ms.out
+To run simulations with msHOT-lite, then followed the directions from Heng Li to do PSMC:
+./psmc/utils/ms2psmcfa.pl < ./foreign/msHOT-lite/ms.out > msout_test.psmcfa
+./psmc/psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o msout_test.psmc msout_test.psmcfa
+./psmc/utils/psmc_plot.pl -u 3.46e-9 -g 0.5 -p msout_test msout_test.psmc
+But this just gave a flat line for the population history. Now trying this:
+./msHOT-lite 2 100 -l -t 6.5 -r 0 376 -eN 0.3414 4.08 >ms.out2
+Which has the recombination flag -r with rho set to 0 but sequence length 376 which is the block length of Opom(5 indivs).
+Still gives flat line.
+Now trying it again with -r 0 3000000. Before it seemed to give 4 sites (blocks?) so now maybe there will be enough to infer a history. This may take a little while so I am going climbing.
+
+26/5/17
+The psmc run seemed to work but it won't plot for some reason. Gives the error:
+gnuplot> plot "msout2_test.0.txt" u 1:2 t "popsize" w st ls 1;
+							     ^
+	line 0: x range is invalid
+==> Warning: BoundingBox not found
+It does not like the -g 0.5 flag. Works ok with -u 3.46e-9 -g 3 but looks wrong.
+May be because -t 6.5 is too small in the initial simulation. -t is theta which here is 4Nemu*locus length, so if my locus is 3000000bp theta=1950.5. Trying the whole simulation again with this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/foreign/msHOT-lite$ ./msHOT-lite 2 100 -l -t 1951 -r 0 3000000 -eN 0.3414 4.08 >ms.out3
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/utils/ms2psmcfa.pl < ./foreign/msHOT-lite/ms.out3 > msout3.psmcfa
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o msout3.psmc msout3.psmcfa &
+
+I have plotted both of the Onit pairs (Onit.171.350 and Onit.388.793) on the same graph using this:
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks/PSMC_pop_hist$ ./psmc/utils/psmc_plot.pl -u 3.46e-9 -g 0.5 -p -M Onit.171.350,Onit.388.793 Onit.171.350_388.793 ./Onit/Onit.171.350.psmc ./Onit/Onit.388.793.3.2.test.psmc
+
+30/5/17
+Downloaded ms into linda/Documents/Will/blockcutter/ms/
+Also downloaded the script ms2psmcfa.py from github.com/willyrv/ms-PSM which seems to work on ms output as I think the ms2psmcfa.pl from Heng Li may only work on msHOT output.
+I have tried it exactly as in the tutorial "Applying PSMC to simulated data":
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/ms/msdir$ ./ms 2 100 -t 30000 -r 6000 30000000 -eN 0.01 0.1 -eN 0.06 1 -eN  0.2 0.5 -eN 1 1 -eN 2 2 -p 8 > test1.ms
+(-p specifies the precision of the position output. 8 is the number of digits after the decimal)
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/utils/ms2psmcfa.py ./ms/msdir/test1.ms > test1ms.psmcfa
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o test1ms.psmc test1ms.psmcfa &
+(^this takes about 3 hours)
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/utils/psmc_plot.pl test1ms test1ms.psmc
+This works and gives a plot!
+I have also downloaded from the tutorial's github the script plot_results.py into /blockcutter/psmc/utils/
+This works and gives a plot of the true simulated history and the PSMC-inferred history together. nice!
+Now to do the same with my parameters:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/ms/msdir$ ./ms 2 1000 -t 1951 -r 0 376 -eN 0.3414 4.08 -p 8 > test2.ms
+^this just gives a flat line again. Don't know why. Now trying with 100 blocks of 3000000 bp:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/ms/msdir$ ./ms 2 100 -t 1951 -r 0 3000000 -eN 0.3414 4.08 -p 8 > test2.ms
+Which simulates 100 blocks of length 3000000 
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/utils/ms2psmcfa.py ./ms/msdir/test2.ms > test2ms.psmcfa
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o test2ms.psmc test2ms.psmcfa &
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/utils/psmc_plot.pl -u 3.46e-9 -g 0.5 test2ms test2ms.psmc
+
+1/6/17
+The above ms and psmc run did not plot using the psmc_plot.pl script. It did plot with the plot_results.py script but the psmc line was all over the place. I don't know why.
+Just tried this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/ms/msdir$ ./ms 2 1000 -t 1951 -r 0 660 -eN 0.3414 4.08 -p 8 > test2.ms
+Which again gives a flat line, but this may be because of the timing of the bottleneck- outside the range plotted in the psmc graph?
+Tried this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/ms/msdir$ ./ms 2 1000 -t 0.4291 -r 0 660 -eN 0.3414 4.08 -p 8 > test3.ms
+And it works!
+Now bootstrapping:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/utils/splitfa ./psmc_ms_sims/msout3.psmcfa > ./psmc_ms_sims/msout3.split.fa
+Possible usage of Augustus with parallel (but I don't know- this runs the command on one line at a time and appends to the output file- Augustus may need the whole input file at once):
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/augustus$ nohup parallel -j5 --nice 19 "./augustus-3.2.3/bin/augustus --species=nasonia {} >> Onit.augustus.out.gff" :::: Onit.scaffolds.fasta &
+Augustus without parallel:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/augustus$ ./augustus-3.2.3/bin/augustus --species=nasonia Onit.scaffolds.fasta > Onit.augustus.out.gff &
+
+2/6/17
+Augustus has finished for Onit. 24103 genes detected.
+I think I used the wrong file for bootstrapping psmc. I used msout3.psmcfa, which was made with msHOT-lite, instead of test3ms.psmcfa, which was made with ms and works. Now running again:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./psmc/utils/splitfa ./psmc_ms_sims/test3ms.psmcfa > ./psmc_ms_sims/test3ms.split.psmcfa
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/psmc_ms_sims$ nohup parallel -j6 --nice 19 "/home/linda/Documents/Will/blockcutter/psmc/psmc -N25 -t15 -r5 -b -p "4+25*2+4+6" test3ms.split.psmcfa -o round-{}.psmc" :::: <(seq 100) &
+^This works, but PSMC is not good with short blocks- need to simulate whole scaffolds.
+Run marginal logL curves for each parameter.
+Get C.I.s for Mathematica and plot on top of PSMC graph.
+Get coverage distribution of genes.
+Subsample BED file and do Mathematica on intergenic bits.
+Try different block sizes.
+Simulate inferred history with long scaffolds and do PSMC again.
+
+5/6/17
+I have run marginal logL curves for each parameter for Onit, for the single step change model with 5 individuals (Step_Change_Onit.nb), single step change with 4 subsampled from 5 individuals (Step_Change_x1.4_combos_May2017.nb), and for the simulated single step change model with 4 subsampled from 5 individuals (msprime_Sims_Onit.nb). Generally looks better.
+Got coverage of whole bam file (all Onit individuals together) using this:
+[s1461915@gallstone OnitWill]$ samtools depth Onit.combined.sorted.BWA.paired.markdups.bam > Onit.coverage &
+Now finding out how many scaffolds there are with this:
+[s1461915@gallstone OnitWill]$ awk '{print $1}' Onit.coverage | uniq | wc -l
+Then I can plot in R for each scaffold separately.
+Then I need to make a new bed file by subsampling the old one for intergenic regions using Onit.augustus.out.gff.
+Get coordinates of each gene with this:
+grep -P '\tgene\t' Onit.augustus.out.gff | awk '{print $1,$4,$5}'
+Or get histogram directly using something like this:
+[s1461915@gallstone OnitWill]$ ../../bedtools2/bin/bedtools coverage -hist -a Onit.augustus.out.gff -b Onit.combined.sorted.BWA.paired.markDups.bam > Onit.genes.coverage.hist &
+This seems to have worked! Now to plot in R.
+Plotted in linda/Documents/Will/blockcutter/Onit/Onit_coverage_plots.R
+Maybe a second peak but not very strong. I thought as much.
+
+6/6/17
+Need to make a bed file that contains the regions in the bed file that I used previously for blockcutter (Onit.388.Onit.171.Onit.793.Onit.1085.Onit.386B.CallableLoci.mbq10mmq20md1.masked.CALLABLE.bed2) and that are intergenic (not in the .gff file from Augustus (Onit.augustus.out.gff).
+First I need to make a bed file of the regions from Augustus, then I can intersect them.
+Using galaxy to make bed file from Augustus output which is gtf:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ python ../GFFtools-GX/gtf_to_gff.py Onit.augustus.out.gff > Onit.augustus.out.gff3 &
+This gives error:
+IndexError: too many indices for array
+Something wrong with the format of the Augustus output? Maybe I need to run augustus again with gff3=on so it outputs a gff3 file instead of gtf. Then use gff_to_bed.py.
+Running this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/augustus$ ./augustus-3.2.3/bin/augustus --species=nasonia --gff3=on Onit.scaffolds.fasta > Onit.augustus.out.gff3 &
+Now simulating with Konrad's script pop1_block_sims.py as I did before for Onit parameters, but 100x more in order to do bootstrapping. With recombination rate, recr = 2.3e-9 (from Documents/Will/simulations/reco_estimates/Recombination_rates_Will_0217.xlsx):
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 660 660 100000 4 5 > msprime_Sims_Onitstep_bootstraps.txt &
+^block length = window length so no reco between blocks but there is still reco within blocks.
+Loaded into Mathematica notebook msprime_Sims_Onit_bootstraps.nb. Split it into 100 replicates of 1000 blocks and mapped all functions over it.
+
+8/6/17
+Augustus has finished again and output a gff3 file this time. I am running gff_to_bed.py:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/augustus$ python ../GFFtools-GX/gff_to_bed.py Onit.augustus.out.gff3 > Onit.augustus.out.bed &
+Mathematica has finished bootstraps for Onit simulations. File is Onit_sim_bootstraps.nb, I have copied results into a text file and formatted in bash to remove brackets and other unneccessary bits with this:
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ tr -d "\n\r" < Onit_sim_bootstrap_results.txt | sed 's/}}},/&\n/g' | sed 's/[{}\\]//g' | sed 's/,$//' | sed 's/^ //' | sed 's/[a-zA-Z]//g' | sed 's/1 ->//g' | sed 's/->//' | sed 's/\[//g' | sed 's/\]//g' | awk '{print $2,$3,$4,$5}' > Onit_sim_bootstrap_results_clean.txt
+And also saved it as a .csv and put it into R (Onit_sim_bootstrap_results.R) to find means and standard deviations:
+#current Ne=43692.53, +2*sd=65070.6, -2*sd=22314.46
+#time of step change in years=24864.88, +2*sd=33539.96, -2*sd=16189.81
+#Ne before step change=184468.1, +2*sd=333655, -2*sd=127471.8
+Now I need to work out how to plot this with PSMC results.
+I have made a bed file of intergenic parts of the original bed file for 5 Onit individuals, using this:
+[s1461915@gallstone OnitWill]$ /data/home/s1461915/PhD/bedtools2/bin/bedtools intersect -a Onit388.Onit171.Onit793.Onit1085.Onit386B.CallableLoci.mbq10mmq20md1.masked.CALLABLE.bed2 -b Onit.augustus.out.gff3 -v > Onit388.Onit171.Onit793.Onit1085.Onit386B.intergenic.bed &
+This new bed file is about 3/4 the size of the original.
+Now blockcutting on linda (see 26/4/17, and 23/1/17 for sed) (but I need to do subsampling with pop1_block_data.py, not nton_counts_combos.py which is my script becuse I should use Konrad's as I am using his similar one for simulated data pop1_block_sims.py) (so I don't need sed).
+So block_cutter_vcf.py, then pop1_block_data.py, then mathematica directly
+blockcutter:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ ./block_cutter_vcf.py Onit388.Onit171.Onit793.Onit1085.Onit386B.intergenic.bed Onit.calibrated_haploid.filtered_variants.vcf.gz Onitloci.txt 660 Onit388.Onit171.Onit793.Onit1085.Onit386B &
+Done subsampling with pop1_block_data.py like so:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ ../pop1_block_data.py Onit388.Onit171.Onit793.Onit1085.Onit386B.660.intergenic.npy Onit388.Onit171.Onit793.Onit1085.Onit386B 4 > Onit388.Onit171.Onit793.Onit1085.Onit386B.660.intergenic.subsampled4.txt &
+So it is now ready for Mathematica!
+Put it into a new Mathematica notebook Step_Change_Onit_combos_intergenic.nb, which uses the functions that Konrad gave me from msprime_Sims_Onit_bootstraps.nb to deal with subsampling.
+The results of the model are very similar to the full genome data (including genic bits), so I probably don't need to bother doing it for the others? Or is it wrong?
+Saved results in /mathematica_bottlenecks/stepchange_parameter_estimates.csv with the other results for single step changes.
+I have added the bootstrap confidence intervals to the plot from PSMC, using LibreOffice Impress (ubuntu powerpoint). This is how lynsey did her plots! Saved as /mathematica_bottlenecks/PSMC_pop_hist/Onit/Onit_psmc_and_bSFS_bootstraps.odp
+
+9/6/17
+Should I have simulated full scaffolds for getting bootstrap C.I.s from Mathematica? 
+I am now trying to find average scaffold length (template length- is this the same?) from the bam file using this:
+[s1461915@gallstone OnitWill]$ samtools view Onit.combined.sorted.BWA.paired.markDups.bam | awk -F'\t' 'function abs(x){return ((x < 0.0) ? -x : x)} { sum += abs($9) } END { if (NR > 0) print sum / NR }'
+Gives average length of 232.313, which is too small to be what I am looking for.
+Shall I just make scaffolds of 10kb or something? To make the same number of blocks as the original I need to put window length = block length*number of blocks, then I cut each window up into blocks separately. Does it matter if I have a different number of blocks? So say 1000 blocks = window length of 660,000. And 100 repeats. Make sure parameters in pop1_block_sims.py are correct for Onit combos.
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$  ./pop1_block_sims.py 660 660000 100 4 5 > msprime_Sims_Onitstep_bootstraps_reco.txt &
+Now running this in Mathematica, in the notebook msprime_Sims_Onit_bootstraps_reco.nb
+
+10/6/17
+bootstraps have finished running in Mathematica msprime_Sims_Onit_bootstraps_reco.nb and I have got confidence intervals of 2 standard deviations in R as described in 8/6/17.
+The estimates are in the right place but C.I.s are massive- lower C.I.s are negative for T and old Ne.
+Maybe if I increase size of blocks this will improve? As there appears to be little bias due to reco, so more information if the blocks are bigger?
+Running the same simulation but with block length twice as big:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$   ./pop1_block_sims.py 1320 660000 100 4 5 > msprime_Sims_Onitstep_bootstraps_reco_2xbl.txt &
+Which will give 500 blocks of 1320bp per replication instead of 1000 blocks of 660bp.
+Run the above simulations through Mathematica msprime_Sims_Onit_bootstraps_reco_2xbl.nb and run the results throught the R script Onit_sim_bootstrap_reco_2xbl_results.R to get C.I.s.
+They are still massive, but again they are centred in about the right place.
+
+13/6/17
+Saved results of the bootstrap C.I. investigations in Onit_sim_bootstrap_all_parameter_results.csv
+In Step_Change_x1.4_combos_May2017.nb with the data Onit_nton_counts_combos_math.txt, doing Length[onitflat] gives 49585 which is the number of blocks in the data.
+Nasonia has 5 chromosomes.
+Now doing bootstrap simulations again with parameters from Onit combos, with block length=660, window length=block length*(number of blocks in data(49585)/number of chromosomes I am splitting it into(10))=3272610, number of windows=number of bootstraps(100)*number of chromosomes per replicate(10)=1000.
+So like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$  ./pop1_block_sims.py 660 3272610 1000 4 5 > msprime_Sims_Onitstep_bootstraps_fulllength.txt &
+This gives means very close to the actual parameters, but still big C.I.s. Removing the 5 bootstraps with the highest theta reduces the C.I.s massively, so there are a few serious outliers. Saved data in mathematica_bottlenecks/Onit_sim_bootstrap_fulllength_results.csv, and R script to analyse it and get C.I.s etc in mathematica_bottlenecks/Onit_sim_bootstrap_fulllength_results.R.
+Results from all of the bootstraps are in mathematica_bottlenecks/Onit_sim_bootstrap_all_parameter_results.csv
+I have also started doing PSMC on Spanish Taur (see 19/5/17 and 24/5/17 for method), and trying to get distances from each block to the nearest gene.
+Made a file blockcutter/Onit/Onit.augustus.gene_coordinates.txt with contig ID, start coordinate, end coordinate of each gene. Need to get distance from each block in Onit_nton_counts_combos.txt from the nearest gene in Onit.augustus.gene_coordinates.txt.
+Started making a python script to do this in blockcutter/block2gene_distance.py
+
+15/6/17
+Finding average coverage for all Spanish and Portugese Taur individuals (see 19/5/17). First made txt files with RG IDs for each individual, then making bam files for each indiv in parallel using this:
+[s1461915@gallstone TaurWill]$ nohup parallel --nice 19 "samtools view -bhR Taur_RG_IDs_{}.txt Taur.combined.sorted.BWA.paired.markDups.bam > Taur.combined.sorted.BWA.paired.markDups.{}.bam" ::: 436 438 1387 1384B &
+Then I can find average read depth for each individual:
+parallel --nice 19 "samtools depth -a Taur.combined.sorted.BWA.paired.markDups.{}.bam | awk '{sum+=$3} END { print "{} Average = ",sum/NR}'" ::: 409 435 436 438 1387 1384B
+^this doesn't work for some reason. Doing it individually instead.
+Taur409=5.67367
+Taur435=7.45207
+Taur436=7.42637
+Taur438=8.55612
+Taur1387=5.47021
+Taur1384B=5.28733
+block2gene function seems to work! Now I just need to make it into a proper script and modify the input block file and gene file to be in the right format, then I can run it! ok so there is a lot to do.
+I can't get block2gene_distances.py to work as a script. The function block2gene is fine, but I can't work out how to import the files properly using sys.argv or whatever.
+
+18/6/17
+I have worked out (I think) how to import files properly for block2gene_distance.py.
+Need files to be formatted first so they have no brackets or commas, tab delimited, with one entry on each line.
+This replaces spaces with tabs:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ sed 's/\s/\t/g' Onit.augustus.gene_coordinates.txt > Onit.augustus.gene_coordinates_tabs.txt
+This removes {}, and replaces spaces with tabs:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ sed 's/[{},]//g' Onit_nton_counts_4_s2.txt | sed 's/\s/\t/g' > Onit_nton_counts_4_s2_tabs.txt
+Running it:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ ../block2gene_distance.py Onit_nton_counts_4_s2_tabs.txt Onit.augustus.gene_coordinates_tabs.txt > Onit_b2g_distances.txt
+^This doesn't work. Outputs all distances as 9999999999. Now fixed! Output in same file^
+Made .csv file of the block file Onit_nton_counts_4_s2_tabs.txt, and of the distances file Onit_b2g_distances.txt, by first putting one entry (distance) on each row like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ tr -s ', ' '\n'< Onit_b2g_distances.txt | sed 's/\[//g' | sed 's/\]//g' > Onit_b2g_distances2.txt
+Calculated pi per site and plotted in R: block2gene_distance_vs_pi.R
+There does appear to be a slight positive correlation between pi and distance!
+Excluding blocks with no gene in the same contig, p=0.00133, Multiple Rsquared=0.001408, AdjustedRsquared=0.001272, estimate=7.368e-9
+With all blocks, p=2.11e-13, MultipleRsquared=0.005413, AdjustedRsquared=0.005313, estimate=3.363e-14
+The effect is greater without blocks in gene-less contigs. It doesn't make sense at all to do it with them because I gave them an arbitrarily high distance value.
+
+19/6/17
+Number of blocks in Onit_b2g_distances2.txt = 9933.
+Number of blocks with no genes in same contig (given distance as 9999999999) = 2622.
+4702 unique contigs in Onit_nton_counts_4_s2_tabs.txt, so an average of ~2 blocks/contig.
+Doing more PSMC on Taur.
+Using Taur435 and Taur438 as they have highest coverage (7.45207 and 8.55612 respectively).
+Using -d 2 -D 30 in the vcfutils.pl vcf2fq command (minimum and maximum coverage to use for making fq file).
+Saving as Taur.435.fq.gz and Taur.438.fq.gz respectively.
+Annotation stuff:
+length of sequence predicted by Augustus as genic in Onit = 60541135bp (~60Mbp). Found with this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ awk '{$4 = $3 - $2} 1' Onit.augustus.gene_coordinates_tabs.txt | awk '{ sum += $4 } END { print sum }'
+Number of genes predicted by Augustus = 24103.
+Nasonia has 19367 transcripts (according to Ensembl), so Onit has more.
+Onit.scaffolds.fasta has 259923067bp (~260Mbp), and Nasonia has ~240Mbp
+How do I find out if I have predicted the right genes?
+
+20/6/17
+I have done PSMC on Taur! Looks good, as predicted there is an increase in pop size, but it is later and bigger in PSMC than predicted by Mathematica. Also done bootstraps.
+Now I should do Hungarian Taur.
+Getting average coverage for Hungarian Taur: one is 4.9624, the other is 4.59087. Don't know which is which.
+Running samtools mpileup command for both Hungarian Taur now, with -d 2 -D 30 as before. (19/5/17).
+Finding mean contig length for Onit in Onit.scaffolds.fasta:
+[s1461915@gallstone OnitWill]$ grep -v 'NODE' Onit.scaffolds.fasta | awk '{ print length; }' | awk '{ total += $1 } END { print total/NR }'
+^Gives mean scaffold length = 7006.33
+[s1461915@gallstone OnitWill]$ grep -v 'NODE' Onit.scaffolds.fasta | awk '{ print length; }' | sort -n | awk ' { a[i++]=$1; } END { print a[int(i/2)]; }'
+^Gives median scaffold length = 2301. This is correct (checked in R)
+Redoing Mathematica with blocks > 1kb from genes. For b2g_distances I used the file Onit_nton_counts_4_s2_tabs.txt, so should I do it on this (4 indivs, no combos) or for 4 indivs with combos, or 5 indivs? I should probably do it with combos.
+This will format a combos file for block2gene_distances.py:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ xargs -n13 < Onit_nton_counts_combos.txt | sed 's/[{},]//g' | sed 's/\s/\t/g' > Onit_nton_counts_combos_b2gd.txt
+Now running block2gene_distances.py for the combos:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ ../block2gene_distance.py Onit_nton_counts_combos_b2gd.txt Onit.augustus.gene_coordinates_tabs.txt > Onit_b2g_distances_combos.txt
+Now I can make a file of blocks > 1kb from genes for Mathematica.
+This puts one entry (distance) on each line:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ tr -s ', ' '\n'< Onit_b2g_distances_combos.txt | sed 's/\[//g' | sed 's/\]//g' > Onit_b2g_distances_combos2.txt
+I need to work out how to subset the file Onit_nton_counts_combos(_math).txt for blocks > 1kb from genes. I should then also do it for blocks <= 1kb from genes to compare bSFS and pi.
+
+21/6/17
+I have finished PSMC on Hungarian Taur. Looks very similar to Spanish Taur but with much greater current Ne- about what I would expect if step change did happen before split between Spain and Hungary! Now bootstrapping.
+Finished bootstrapping, this does not improve the plot- a few bootstraps give an enormous recent Ne so you can't see what is going on close to y=0.
+Plot with the lower end of the x axis (recent generations) cut off by using -x (most recent generation). eg -x 20000 will start plotting at 2e4 generations ago.
+I have plotted Taur.130.246 (Hungarian) starting at 2e4 generations as Taur.130.246.2.pdf and Taur.130.246.combined.2.pdf for data only and including bootstraps respectively. Looks very similar to the Spanish Taur! Success! So step change up did happen before split between Spainish and Hungarian Taur.
+Now need to combine Onit_nton_counts_combos_math.txt and Onit_b2g_distances_combos2.txt, then make new files with only blocks >1kb from genes and <=1kb from genes.
+Combine files like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ paste -d'\t' Onit_nton_counts_combos_math.txt Onit_b2g_distances_combos2.txt > Onit_combos_counts_and_distances.txt
+This takes only blocks > 1kb from genes and prints to a new file (Onit_nton_counts_combos_math_intergenic.txt) ready for mathematica:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ awk '{ if ($11 > 1000 && $11 < 999999999) print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10 }' Onit_combos_counts_and_distances.txt > Onit_nton_counts_combos_math_intergenic.txt
+This is for blocks <= 1kb from genes:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ awk '{ if ($11 <= 1000) print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10 }' Onit_combos_counts_and_distances.txt > Onit_nton_counts_combos_math_genic.txt
+Now to do mathematica on both of these and compare.
+Using mathematica notebook Step_Change_x1.4_combos_May2017.nb, saved new as Step_Change_x1.4_combos_intergenic_blocks.nb (to differentiate from the intergenic one I did which starts from intergenic raw sequence instead of removing genic blocks) and Step_Change_x1.4_combos_genic_blocks.nb. I have done MatrixPlot of the table of config counts for each set (genic and intergenic blocks), and one for intergenic-genic which shows the difference. Blue means negative (genic is greater), red means positive (intergenic greater). This is in Step_Change_x1.4_combos_intergenic_blocks.nb
+
+22/6/17
+Redone Mathematica step change model for Cfun- it is significant!
+Small peak in theta at 1.08601. logL=-26950.6, compared to null logL=-26954.2. lambda=0.0050767, T=4.00438 so the change is very big and very old. Only just significant really. Marginal logL curve of lambda seems to just keep increasing as lambda approaches 0- don't know why.
+Pi vs distance to nearest gene in R is more significant if I remove blocks further away from genes. Only using blocks < 30kb from genes gives estimate=2.9852e-8, R^2=0.00608, p=5.34e-11, compared to all blocks estimate=7.368e-9, R^2=0.001408, p=0.00133.
+With decreasing max distance from gene, the effect estimate increases but the p and R^2 decreases (due to less data?). Still significant at 4kb, not significant at 3kb.
+Redone MatrixPlot for genic vs intergenic blocks in Mathematica, as before I used counts when I should have used proportions, obviously. Still don't know which axis is singletons and which is doubletons.
+
+26/6/17
+Running more stepchange models in Mathematica again to check if they are significant or not.
+Msti and Mdor look very similar, the full model has a higher logL than the null so significant, but theta and lambda curves both have higher logL as the parameters approach 0. T has an actual peak.
+Ebru also has a higher logL for the full model, but only slightly and the curves are strange. Maybe very low lambda?
+I have simulated with pop1_block_sims.py to make bootstraps to see if bottleneck model is significantly better than stepchange model for Onit. Simulated under parameters for Onit 5 individual step change model:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 586 581136 1000 5 5 > msprime_Sims_Onitstep_bootstraps_fulllength_5indivs.txt &
+With msprime parameters as for the 5 indiv stepchange model in stepchange_parameter_estimates.csv.
+In Mathematica notebook msprime_Sims_Onit_bootstraps_fulllength_5indivs.nb
+As the data is different (simulated not real), the logL for the null model is different- how do I compare? Do I look at the difference between logLs?
+The bottleneck GF (bottUnroot5.m) doesn't seem to be working- was it made under a different File_S1?
+
+27/6/17
+Done Ebru and Opom stepchange models in Mathematica. Both are significantly better for full vs null model, but with some parameters hitting bounds.
+The bottleneck GF (bottUnroot5.m) was made under the older File_S1 (07_05_2016). Using this works.
+Now running full bottleneck model mapped over all bootstraps.
+
+28/6/17
+The bottleneck model mapped over all bootstraps has not finished. If it takes as long as a single one *100, it will take 8.3 days. I have therefore stopped it and started it again using ParallelMap which does the same in parallel. This may still take 2 days as there are only 4 kernels.
+
+3/7/17
+Put output of bootstrap simulation results from mathematica into a csv file to use in R by doing this:
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ cat Onit_sim_bootstrap_results_stepparams_stepmodel.txt | tr -d '\n' | sed 's/}},/\n/g' | sed 's/{//g' | awk '{print $1 $4 $7 $10}' > Onit_sim_bootstrap_results_stepparams_stepmodel.csv
+And same for results with the bottleneck model:
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ cat Onit_sim_bootstrap_results_stepparams_bottlemodel.txt | tr -d '\n' | sed 's/}},/\n/g' | sed 's/{//g' | awk '{print $1 $4 $8 $12}' > Onit_sim_bootstrap_results_stepparams_bottlemodel.csv
+I have put them into R and saved as Onit_sim_bootstrap_results_bottlevsstep.R.
+The difference in logL between the models on the real data is 21.2 in favour of the bottleneck model, and the mean +- 2*sd C.I.s are 472.71 and 353.93 in favour of the stepchange, so my result is outside of this so the bottleneck model is significantly better. I think?
+Running the bottleneck bootstraps again with parameter boundaries same as for the real run as I think they are better.
+
+7/7/17
+Done bootstrapping for bottleneck model with 0.2>T>0 (as for run on real data) instead of 5>T>0. Gives higher logLs.
+Checked mean +- 2*sd in R again, gives C.I.s of 2.557636 and -4.297636, so -21.2 is outside this so the bottleneck model is still significantly better than the stepchange model. (but not by so much).
+I think the bootstrap simuations that I just did for logL differences are better than the ones I did previously (using combos- 13/6/17) as before I simulated 5x the number of blocks in the data. I did Length[onitflat] to get number of blocks, but this gave me 5x as it was combos. Doing Length[onittest] on the original 5 individual data gives 9917 blocks. Block length(586)*number of blocks(9917)/chromosomes(10)=window length(581136.2). The results seem better too, as sd.s are smaller- gives smaller C.I.s to put on PSMC plot!
+Made new plot in /mathematica_bottlenecks/PSMC_pop_hist/Onit/Onit_psmc_and_bSFS_bootstraps_5indivs_fulllength.odp and saved results in /mathematica_bottlenecks/Onit_sim_bootstrap_all_parameter_results.csv
+Do bottleneck model with 5 indivs for intergenic and genic regions? Need to get file of genic parts of the 5 indiv file (Onit_nton_counts_table_KL2.txt ?) Need to do block2gene_distance.py first to get distance between each block and the nearest gene, then subset file with awk (21/6/17)
+formatted Onit_nton_counts_table_KL2.txt for block2gene_distance.py like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ sed 's/[{},]//g' Onit_nton_counts_table_KL2.txt | sed 's/\s/\t/g' > Onit_nton_counts_table_KL2_tabs.txt
+Now doing block2gene_distances.py like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ ../block2gene_distance.py Onit_nton_counts_table_KL2_tabs.txt Onit.augustus.gene_coordinates_tabs.txt > Onit_b2g_distances_5indivs.txt
+Put one distance on each line like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ tr -s ', ' '\n'< Onit_b2g_distances_5indivs.txt | sed 's/\[//g' | sed 's/\]//g' > Onit_b2g_distances_5indivs2.txt
+Combine the mathematica-ready file of counts with the distances file like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ paste -d'\t' Onit_nton_counts_table_KL2_simple2.txt Onit_b2g_distances_5indivs2.txt > Onit_5indivs_counts_and_distances.txt
+Make file of counts of only blocks >1kb from genes like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ awk '{ if ($3 > 1000 && $3 < 999999999) print $1,$2 }' Onit_5indivs_counts_and_distances.txt > Onit_nton_counts_5indivs_math_intergenic.txt
+And for genic blocks:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ awk '{ if ($3 <= 1000) print $1,$2 }' Onit_5indivs_counts_and_distances.txt > Onit_nton_counts_5indivs_math_genic.txt
+Make sure there is a curly bracket at either end of each file with nano
+Now do mathematica on them both using bottleneck_model_Onit.nb (with 07_07_2016 version of File_S1).
+Running it for intergenic blocks now. Do same for genic blocks tomorrow.
+
+10/7/17
+Finished running Mathematica bottleneck model on Onit genic and intergenic blocks. Results in mathematica_bottlenecks/bottleneck_parameter_estimates.csv
+Intergenic has higher theta than genic, but all blocks together have highest theta?? But not a huge amount of difference either way.
+
+18/7/17
+I have plotted proportions of each blockwise configuration in Onit in genic and intergenic regions against one another in R (mathematica_bottlenecks/proportions_configs_genic_vs_intergenic.R). This gives a curve which fits significantly better than a straight line. Not sure how to show that it is better than the line y=x (neutral expectation), or if this is necessary.
+This deviation shows that there is information on selection in blockwise data.
+
+19/7/17
+I have improved the plot for the coverage distribution in Onit and there definitely is a bump!
+(/blockcutter/Onit/Onit_coverage_plots.R)
+Unfortunately it is not in the expected place at 2x the coverage of the main peak. It is closer to the main. This could be because the genes in the bump are paralagous genes with some reads that map to other genes.
+The genes in the bump are on average shorter than those in the main peak, suggesting that they are paralagous parts of genes.
+Jack suggests looking at candidate gene sets for duplicates at twice the coverage as the signal may be better than in the full set of genes. Compare it to full set and see if it is shifted right.
+Search in output of Augustus for genes in bump to see if they have paralogs.
+Find whole entry for a gene in Onit.augustus.out.gff3 like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ sed -n -e '/start gene g10040$/,/end gene g10040$/ p' Onit.augustus.out.gff3 | less
+Search for a chunk of the protein sequence in the Onit.augustus.out.gff3 file again like this:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ grep 'MFRYLVI' Onit.augustus.out.gff3 | less
+And if it comes up more than once there is a paralog.
+This particular gene (g10040) does have a paralog (g13536) that is half the length and with decent coverage in the main peak of genes. It has very similar sequence but with a few differences, so is a good hit!
+Find length and coverage in the R script /blockcutter/Onit/Onit_coverage_plots.R
+How do I automate this?
+
+20/7/17
+I have made fasta files for all genes in /blockcutter/Onit/Onit.augustus.proteins.fasta and for just genes in the bump (604 genes) in /blockcutter/Onit/bump_proteins.fasta
+I could BLAST bump genes against all genes but this would take a while.
+To turn gff into fasta:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter/Onit$ sed -n -e '/protein sequence =/,/end gene/ p' Onit.augustus.out.gff3 | sed 's/[][#]//g' | sed 's/protein sequence = //' | sed 's/end gene />/' | sed "s/g[0-9]*[0-9]/&@/g;:a {s/0@/1/g;s/1@/2/g;s/2@/3/g;s/3@/4/g;s/4@/5/g;s/5@/6/g;s/6@/7/g;s/7@/8/g;s/8@/9/g;s/9@/@0/g;t a};s/@/1/g" > Onit.augustus.proteins.fasta
+This finds just the protein sequence and the gene name (eg g1) at the end of each sequence, and gets rid of the unnecessary bits and adds 1 to each gene name to refer to the next sequence. I then added the first (g1) to the beginning of the file and removed the last from the end using nano, and removed spaces before each line.
+I then used the script subset2.py to make the fasta for bump genes using a list of bump gene names and the above full fasta.
+Now running full BLAST of all bump proteins in bump_proteins.fasta against all proteins in Onit.augustus.proteins.fasta
+
+18/8/17
+Bootstrapping to check significance of all models.
+First simulating under null model and finding support for null and most highly supported model to see if full model is significantly better than null.
+Simulating with msprime for Taur null model:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 328 318652 1000 5 5 > msprime_sims_Taur_null.txt &
+^With parameters in the script from mathematica_bottlenecks/bottleneck_parameter_estimates.csv for Ne, scal (lambda)=1 for no change in pop size, reco rate from Documents/Will/simulations/reco_estimates/Recombination_rates_Will_0217.xlsx from Lynsey. Block length and number of blocks in blockcutter/Taur/Taur328_Summary.txt. Window length = block length*number of blocks/number of chromosomes(10). Number of windows = number of bootstraps(100)*number of chromosomes(10)=1000
+Null model simulations finished for Taur. Took ~20 minutes?
+Moved msprime_sims_Taur_null.txt into /blockcutter/Taur/ (instead of just /blockcutter/)
+Saved Mathematica notebook for Taur as msprime_sims_Taur_null.nb
+All 100 bootstraps for null model run very fast- ~1 minute. Taking longer for step change model.
+Now simulating bootstraps for null models for Msti, Onit,
+Saved Taur mathematica results for bootstrap replicates for null and stepchange models simulated under null model as /mathematica_bottlenecks/Taur_sim_bootstrap_results_nullvsstep_null.txt andTaur_sim_bootstrap_results_nullvsstep_step.txt respectively.
+Now to sort them out to make .csv for use in R as done on 3/7/17.
+Null model results:
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ cat Taur_sim_bootstrap_results_nullvsstep_null.txt | tr -d '\n' | sed 's/}},/\n/g' | sed 's/{//g' | awk '{print $1 $4}' > Taur_sim_bootstrap_results_nullvsstep_null.csv
+Stepchange model results:
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ cat Taur_sim_bootstrap_results_nullvsstep_step.txt | tr -d '\n' | sed 's/}},/\n/g' | sed 's/{//g' | awk '{print $1 $4 $7 $10}' > Taur_sim_bootstrap_results_nullvsstep_step.csv
+And remove }}} at the end (in excel is easiest)
+2 standard deviations of the difference in logLs between null and stepchange models in the bootstrap replicates is 8.184938. Mean plus and minus 2 standard deviations is 19.425938 and 3.056062.
+Difference in logLs between models in the real data is 118.6, so the step change model is significantly better than the null model. Hooray!
+Saved results of bootstrap model testing (for all species) in /mathematica_bottlenecks/bootstrap_model_testing.csv
+Now running Mathematica stepchange model on all Msti null model bootstrap replicates, in /mathematica_bottlenecks/msprime_sims_Msti_null.nb
+
+21/8/17
+Stepchange model is significantly better than null for Msti.
+Now running models for Onit, and simulating for Opom:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 376 372353 1000 5 5 > msprime_sims_Opom_null.txt &
+Simulations finished for Opom. Now doing all others. Bottleneck models for Onit will take ~2 days I guess so I will do all of the simulating while I wait:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 558 557051 1000 5 5 > msprime_sims_Mdor_null.txt &
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 223 212051 1000 5 5 > msprime_sims_Ebru_null.txt &
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 338 336141 1000 5 5 > msprime_sims_Cfun_null.txt &
+
+24/8/17
+I need to use 97.5% quantile instead of 2 standard deviations when testing for significance between null and alternative models, as 2sd is only if the distribution is normal. (97.5 because it is 1 tailed, not 2)
+All species so far still significant with this change^ (in mathematica_bottlenecks/bootstrap_model_testing.csv)
+Finished running bottleneck model for all bootstraps on Onit, it is significantly better than null.
+Now running for Opom in mathematica_bottlenecks/msprime_sims_Opom_null.nb. Done null model, waiting for full bottleneck.
+
+28/8/17
+Opom bottleneck bootstraps finished, bottleneck is significantly better than null.
+Now running mathematica bottleneck model on Mdor.
+
+1/9/17
+Finished running bottleneck model on bootstraps of Mdor. Ebru and Cfun to go.
+Converting Mathematica results into csv files to analyse in R:
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ cat Mdor_sim_bootstrap_results_nullvsbottle_null.txt | tr -d '\n' | sed 's/}},/\n/g' | sed 's/{//g' | awk '{print $1 $4}' | sed 's/}//g' > Mdor_sim_bootstrap_results_nullvsbottle_null.csv
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ cat Mdor_sim_bootstrap_results_nullvsbottle_bottle.txt | tr -d '\n' | sed 's/}},/\n/g' | sed 's/{//g' | awk '{print $1 $4 $8 $12}' | sed 's/}//g' > Mdor_sim_bootstrap_results_nullvsbottle_bottle.csv
+Analysing in R script Onit_sim_bootstrap_results_bottlevsstep.R.
+Mdor bottleneck model is significantly better than null model (All others so far are also significant (Msti, Taur, Onit, Opom))
+
+4/9/17
+Finished running bottleneck model on bootstraps of Ebru.
+Ebru bottleneck model is not significantly better than null model! 97.5% c.i. is 48.435, real difference between logLs of models is 7.5.
+Started doing the same for Cfun in msprime_sims_Cfun_null.nb. Null models have finished, I don't have time to do bottleneck models before we leave for Japan so I will have to do them when I get back.
+Results of bootstraps so far are in mathematica_bottlenecks/bootstrap_model_testing.csv
+R script for analysing results from each notebook is Onit_sim_bootstrap_results_bottlevsstep.R
+
+22/9/17
+Back from Japan.
+I previously did C.I.s for model testing at 97.5% instead of 95% as appropriate for 1 tailed. I have redone them (in Onit_sim_bootstrap_results_bottlevsstep.R) at 95% and the results are unchanged- all still significantly better for highest supported model apart from Ebru.
+Now running bottleneck model on all bootstraps for last species Cfun.
+Also simulating under stepchange model for other species using pop1_block_sims.py:
+Command line parameters are the same as before (see 21/8/17), in-script parameters are different. For recr, see hard copy log book entry for 18/8/17. For scal, Ne + T_bott see mathematica_bottlenecks/stepchange_parameter_estimates.csv. T_bott is in generations so use years*2 (apart from for Msti as it has 1 generation/year, so just use years).
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 328 318652 1000 5 5 > ./Taur/msprime_sims_Taur_step.txt &
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 376 372353 1000 5 5 > ./Opom/msprime_sims_Opom_step.txt &
+
+25/9/17
+Finished running bottleneck model on Cfun null bootstrap simulations, 95% CI of difference between logL of null and bottleneck model is 30.61, difference in real data is 7.3 so it is not significant! Don't need to do Cfun any further.
+Now I just need to simulate under stepchange model for the remaining species which are Msti and Mdor as I have already done Taur and Opom and Onit, and Ebru and Cfun are not significant.
+Simulating for Msti stepchange model:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 1584 1592416 1000 5 5 > ./Msti/msprime_sims_Msti_step.txt &
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims.py 558 557051 1000 5 5 > ./Mdor/msprime_sims_Mdor_step.txt &
+I have run Opom stepchange model on all bootstraps simulated under stepchange model parameters, in new notebook msprime_sims_Opom_step.nb. Now running bottleneck model on the same simulations.
+
+29/9/17
+Finished running bottleneck model on Opom stepchange bootstrap simulations. Converting results to .csv files:
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ cat Opom_sim_bootstrap_results_stepvsbottle_step.txt | tr -d '\n' | sed 's/}},/\n/g' | sed 's/{//g' | awk '{print $1 $4 $7 $10}' | sed 's/}//g' > Opom_sim_bootstrap_results_stepvsbottle_step.csv
+linda@sce-bio-c02967:~/Documents/Will/mathematica_bottlenecks$ cat Opom_sim_bootstrap_results_stepvsbottle_bottle.txt | tr -d '\n' | sed 's/}},/\n/g' | sed 's/{//g' | awk '{print $1 $4 $8 $12}' | sed 's/}//g' > Opom_sim_bootstrap_results_stepvsbottle_bottle.csv
+In simulations, stepchange model is better supported than bottleneck as expected as simulations were done under the stepchange model. Bottleneck model is better in real data, so does this mean it is significantly better? Would I expect anything else? I think it is ok. It shows that if there is actually a stepchange in the real data, it would not have told me it is a bottleneck.
+Now to run stepchange and bottleneck models on Mdor stepchange simulations, then start making bottleneck simulations.
+I have started running the bottleneck model on the Mdor simulations, will need to do the stepchange model after (with Oct2016 version of File_S1)
+
+6/10/17
+Finished running bottleneck and stepchange models on Mdor stepchange simulations.
+Bottleneck is not significantly better than stepchange- which do I use?
+
+10/10/17
+I have run the stepchange model on all boostraps of Msti stepchange simulations, but they are not quite giving the right answer- not the same as the original parameters that I put in. In /mathematica_bottlenecks/msprime_sims_Msti_step.nb
+Trying to update msprime to version 0.4.1 in order to be able to use InstantaneousBottleneck for doing bottleneck simulations. Can't work it out.
+
+11/10/17
+Saved Msti stepchange bootstrap simulation results in /mathematica_bottlenecks/Msti_sim_bootstrap_results_step.txt
+Also run stepchange model on Taur stepchange simulations in /mathematica_bottlenecks/msprime_sims_Taur_step.nb, and saved in /mathematica_bottlenecks/Taur_sim_bootstrap_results_step.txt
+Some of the bootstraps gave "not a real number" and they have given results but the parameters are in the wrong order which screws up my unix line for making a sensible results .csv file. I just fixed it manually in excel.
+I have downloaded the latest msprime 0.4.1 (with bottlenecking bit) directly from github using:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ git clone https://github.com/jeromekelleher/msprime.git
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ sudo pip install ./msprime
+And simulating a bottleneck for Taur works:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims_bottleneck.py 328 318652 1000 5 5 > ./Taur/msprime_sims_Taur_bottle.txt &
+With in-script parameters: recr = 1.7e-9, scal = 7.22649e5, Ne = 7.09257e5, T_bott = 8.71745e5, mu = 3.46e-9
+Simulating bottleneck for Msti:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims_bottleneck.py 1584 1592416 1000 5 5 > ./Msti/msprime_sims_Msti_bottle.txt &
+In script parameters: recr = 1.3e-8, scal = 1.9345e4, Ne = 5.8980e4, T_bott = 1 (T_bott=0 does not work so I have put 1 instead)
+Mdor:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims_bottleneck.py 558 557051 1000 5 5 > ./Mdor/msprime_sims_Mdor_bottle.txt &
+In script parameters: recr = 3.0e-9, scal = 2.3771e4, Ne = 1.38447e5, T_bott = 1
+Onit:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims_bottleneck.py 586 581136 1000 5 5 > ./Onit/msprime_sims_Onit_bottle.txt &
+In script parameters: recr = 2.3e-9, scal = 1.42576e5, Ne = 1.85269e5, T_bott = 21481
+Opom:
+linda@sce-bio-c02967:~/Documents/Will/blockcutter$ ./pop1_block_sims_bottleneck.py 376 372353 1000 5 5 > ./Opom/msprime_sims_Opom_bottle.txt &
+In-script parameters: recr = 3.9e-9, scal = 2.65621e5, Ne = 2.84929e5, T_bott = 3.00588e5, mu = 3.46e-9
+
+12/10/17
+Getting Dmoj genes DE between regions.
+Konrad has already made a file of all differences in expression in all comparisons (region, sex, diet, region for males, region for females) with codes and starting positions for all genes. This file is now on my gallstone /s1461915/PhD/Dmoj_Will/DE_data_2017/DE_codes_pos_region_sex_diet_diffs.txt
+Actual ratio of expression is 2^difference in microarray intensity which is given in the file.
+To get from this genes that have >=1.5 fold difference in expression, use this:
+[s1461915@gallstone DE_data_2017]$ awk '{if (2^(sqrt($4^2))>=1.5) print $0}' DE_codes_pos_region_sex_diet_diffs.txt | less
+(or | wc -l)
+This gives 180 genes DE for region. 8125 are DE for sex, 0 for diet, 458 for region in males, 204 for region in females.
+I have made a new file in /s1461915/PhD/Dmoj_Will/DE_data_2017/ with FlyBase reference, scaffold, start position, end position for each gene, called Dmoj_FBtr_start_end_pos_fin.txt
+[s1461915@gallstone DE_data_2017]$ cut -f3  Dmoj_FBtr_pos.txt | awk -F. '{print $1"\t"$NF}' | sed "s/[^0-9\t]//g" > Dmoj_FBtr_start_end_pos.txt
+[s1461915@gallstone DE_data_2017]$ paste Dmoj_FBtr_FB_scaff.txt Dmoj_FBtr_start_end_pos.txt | column -s $'\t' -t | sort -k1,1 -k2,2n > Dmoj_FBtr_start_end_pos_fin.txt
+^Like Konrad has already done but with end position as well. With this I can make a bed file with genes DE by region (or by anything else) to intersect the .vcf file (or wormtable)
+I have made a file /s1461915/PhD/Dmoj_Will/DE_data_2017/DE_codes_start_end_region_sex_diet_diffs.txt which contains FlyBase reference, scaffold, start position, end position for each gene, and expression differences for each gene for each effect. (but misses off the expression differences for the last few (~67) genes for some reason??)
+[s1461915@gallstone DE_data_2017]$ awk '{if (2^(sqrt($5^2))>=1.5) print $0}' DE_codes_start_end_region_sex_diet_diffs.txt > DE_by_region_codes_start_end_region_sex_diet_diffs.txt 
+^this gives a file of genes that are DE by region, with all info for them. 
+Make BED file from this with chrom, start, end, gene_name
+Using scaffold as chromosome.
+[s1461915@gallstone DE_data_2017]$ awk '{gsub(/[ ]+/,"\t")}1' DE_by_region_codes_start_end_region_sex_diet_diffs.txt | awk '{print $2"\t"$3"\t"$4"\t"$1}' > DE_by_region.bed
+gzip -cd variant_file.vcf.gz | less to read a vcf.gz
+Use something similar to pairwise_diffs.py to calculate pi?
+C.I.s for Taur stepchange bootstraps do not cover the estimate as they should. Is there a bias somewhere or have I done it wrong?
+Saved C.I.s in /mathematica_bottlenecks/bootstrap_confidence_intervals.csv
+
+14/10/17
+Installed wormtable on linda:
+$ sudo apt-get install libdb-dev
+$ sudo pip install wormtable
+Copied vcf file and vcf.gz.tbi, and lsmeans and DE_by_region.bed to Documents/Will/Dmoj/
+[s1461915@gallstone Will_2016]$ scp All_Dmoj_recal_07_2016.vcf.gz linda@sce-bio-c02967:~/Documents/Will/Dmoj/
+Trying to make a wormtable from the vcf:
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ vcf2wt -t -f All_Dmoj_recal_07_2016.vcf.gz All_Dmoj_recal_07_2016.wt
+^this stopped 85.2% through with: ValueError: String too long for column 'A977.PID'
+So one entry is too long (>254 characters) for wormtable. I can either find this and truncate it manually, or try making a subsetted vcf file with the DE_by_region.bed file.
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ gzip -cd All_Dmoj_recal_07_2016.vcf.gz | grep -n -e '[^;\        ]\{253,\}' | less
+^this gives all lines in vcf that contain a string with no semicolons, spaces or tabs that is at least 253 characters long.
+I have put these into a new file so I can find the offending line tomorrow:
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ gzip -cd All_Dmoj_recal_07_2016.vcf.gz | grep -n -e '[^;\        ]\{253,\}' > All_Dmoj_recal_07_2016_long_lines.vcf &
+I am now running bottleneck model on bottleneck simulations for Opom in Mathematica to get C.I.s. Made new file /mathematica_bottlenecks/msprime_sims_Opom_bottle.nb
+
+15/10/17
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ awk '{print$11}' All_Dmoj_recal_07_2016_long_lines.vcf | grep -e '[^\ ]\{253,\}' | less
+^this gets all lines (variants) with the 11th column (the one that was too long) that is >253 characters. wc -l =45
+10 lines of column 10 >253
+45 lines of column 11 >253
+37 lines of column 12 >253
+55 lines of column 13 >253
+31 lines of column 14 >253
+101 lines of column 15 >253
+38 lines of column 16 >253
+38 lines of column 17 >253
+23 lines of column 18 >253
+40 lines of column 19 >253
+9 lines of column 20 >253
+33 lines of column 21 >253
+4 lines of column 22 >253
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ gzip -cd All_Dmoj_recal_07_2016.vcf.gz | grep -v '^#' | wc -l &
+^there are 11,119,568 lines in the original vcf file. Losing 603 of them shouldn't matter much.
+Find how many variants in All_Dmoj_recal_07_2016_long_lines.vcf are in DE_by_region.bed with python script?
+I have done this^ in python using variant_counter.py. None of the variants are in genes that are DE by region, so I am going to remove them from the vcf file before trying again to make a wormtable.
+Installed vcftools to linda with sudo apt install vcftools
+Making new vcf file without the long variants with this:
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ vcftools --gzvcf All_Dmoj_recal_07_2016.vcf.gz --exclude-positions long_lines_variant_locations.txt --recode --recode-INFO-all --stdout | gzip -c > All_Dmoj_recal_07_2016_short.vcf.gz &
+Counting lines:
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ gzip -cd All_Dmoj_recal_07_2016_short.vcf.gz | grep -v '^#' | wc -l &
+^this gives 11118964, which is the expected 604 lines less than the original vcf.
+Converting to wormtable:
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ vcf2wt -t -f All_Dmoj_recal_07_2016_short.vcf.gz All_Dmoj_recal_07_2016_short.wt &
+^this works! I have a wormtable!
+Create indexes:
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ wtadmin add All_Dmoj_recal_07_2016_short.wt/ POS
+linda@sce-bio-c02967:~/Documents/Will/Dmoj$ wtadmin add All_Dmoj_recal_07_2016_short.wt/ CHROM+POS
+Now I can select variants that are in the DE by region genes.
+Using the transition/transversion ratio function in the wt tutorial, Ts=4148094 Tv=3379254, Ts/Tv=1.2275
+
+16/10/17
+When I made the bed file I just used the first and last positions of the whole gene in /s1461915/PhD/Dmoj_Will/DE_data_2017/Dmoj_FBtr_pos.txt and I didn't consider the exon/intron information. I may need to include this, so make a new bed file with one exon on each line.
+To get the first exon:
+[s1461915@gallstone DE_data_2017]$ sed -n -e 's/,.*//p' Dmoj_FBtr_pos.txt | sed -n -e 's/\t[a-z]*(/\t/p' | sed -n -e 's/\.\./\t/p' | less
+EDIT: ^THIS DOESN'T WORK! USE THIS INSTEAD:
+[s1461915@gallstone DE_data_2017]$ sed 's/,.*//g' Dmoj_FBtr_pos.txt | sed 's/\t[a-z]*(/\t/g' | sed 's/\.\./\t/g' | sed 's/[();:]//g' > Dmoj_FBtr_pos_1stexon.txt
+^this gives FBtr number, scaffold, start, end for the first exon. I need to do this for the other exons too.
+Make new file for each exon then stick them together and sort.
+Opom bottleneck models have finished in Mathematica. (Opom_sim_bootstrap_results_bottle.csv) Tomorrow find C.I.s in R.
+
+17/10/17
+To get 2nd exon from Dmoj_FBtr_pos.txt:
+[s1461915@gallstone DE_data_2017]$ sed 's/join[^,]*,//g' Dmoj_FBtr_pos.txt | sed 's/complement[^,]*,//g' | sed 's/,[^;]*;//g' | sed 's/complement(//g' | sed 's/[();:]//g' | sed 's/\.\./\t/g' | less
+^I have put this into file Dmoj_FBtr_pos_2ndexon.txt. This includes any genes that have only 1 exon, so I must do sort | uniq after combining all the files to remove duplicated lines.
+Third exon:
+[s1461915@gallstone DE_data_2017]$ sed 's/join[^,]*,//g' Dmoj_FBtr_pos.txt | sed 's/complement[^,]*,//g' | sed 's/\t[0-9][^,]*,/\t/g' | sed 's/,[^;]*;//g' | sed 's/complement(//g' | sed 's/[();:]//g' | sed 's/\.\./\t/g' > Dmoj_FBtr_pos_3rdexon.txt
+Fourth exon:
+[s1461915@gallstone DE_data_2017]$ sed 's/join[^,]*,//g' Dmoj_FBtr_pos.txt | sed 's/complement[^,]*,//g' | sed 's/\t[0-9][^,]*,/\t/g' | sed 's/\t[0-9][^,]*,/\t/g' | sed 's/,[^;]*;//g' | sed 's/complement(//g' | sed 's/[();:]//g' | sed 's/\.\./\t/g' > Dmoj_FBtr_pos_4thexon.txt
+Fifth exon:
+[s1461915@gallstone DE_data_2017]$ sed 's/join[^,]*,//g' Dmoj_FBtr_pos.txt | sed 's/complement[^,]*,//g' | sed 's/\t[0-9][^,]*,/\t/g' | sed 's/\t[0-9][^,]*,/\t/g' | sed 's/\t[0-9][^,]*,/\t/g' | sed 's/,[^;]*;//g' | sed 's/complement(//g' | sed 's/[();:]//g' | sed 's/\.\./\t/g' > Dmoj_FBtr_pos_5thexon.txt
+^the gene with the most exons has 52, so I would have to do this 52 times. There must be a better way.
+make bed file with number of exons + sizes + start positions?
+^^^I have deleted all Dmoj_FBtr_pos_5thexon.txt files as they are pointless
+[s1461915@gallstone DE_data_2017]$ cut -f 3 Dmoj_FBtr_pos.txt | sed 's/[a-z();]//g' | sed 's/\.\./\t/g' | sed 's/,/\t/g' | less
+^this gets just the exon coordinates, tab separated
+[s1461915@gallstone DE_data_2017]$ cut -f 3 Dmoj_FBtr_pos.txt | sed 's/[a-z();]//g' | sed 's/\.\./\t/g' | sed 's/,/\t/g' | awk '{a=$2-$1;b=$4-$3;c=$6-$5;d=$8-$7;e=$10-$9;f=$12-$11;g=$14-$13;h=$16-$15;i=$18-$17;j=$20-$19;k=$22-$21;l=$24-$23;m=$26-$25;n=$28-$27;o=$30-$29;p=$32-$31;q=$34-$33;r=$36-$35;s=$38-$37;t=$40-$39;u=$42-$41;v=$44-$43;w=$46-$45;x=$48-$47;y=$50-$49;z=$52-$51;aa=$54-$53;ab=$56-$55;ac=$58-$57;ad=$60-$59;ae=$62-$61;af=$64-$63;ag=$66-$65;ah=$68-$67;ai=$70-$69;aj=$72-$71;ak=$74-$73;al=$76-$75;am=$78-$77;an=$80-$79;ao=$82-$81;ap=$84-$83;aq=$86-$85;ar=$88-$87;as=$90-$89;at=$92-$91;au=$94-$93;av=$96-$95;aw=$98-$97;ax=$100-$99;ay=$102-$101;az=$104-$103; print a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,ab,ac,ad,ae,af,ag,ah,ai,aj,ak,al,am,an,ao,ap,aq,ar,as,at,au,av,aw,ax,ay,az;}' | less
+^this gets the lengths of all exons
+I have made a file /DE_data_2017/exon_lengths.txt that has this^^ but comma separated instead of space, and I have removed the excess 0s.
+[s1461915@gallstone DE_data_2017]$ awk -F',' '{print NF}' exon_lengths.txt > exon_count.txt
+^this makes a new file exon_count.txt containing number of exons in each gene.
+[s1461915@gallstone DE_data_2017]$ cut -f 3 Dmoj_FBtr_pos.txt | sed 's/[a-z();]//g' | sed 's/\.\./,/g' | sed -r 's/,[^,]*(,|$)/\1/g' > exon_starts.txt
+^this makes a comma separated file of start coordinates of exons /DE_data_2017/exon_starts.txt
+[s1461915@gallstone DE_data_2017]$ awk '{print $2,$3,$4,$1}' Dmoj_FBtr_start_end_pos_fin.txt | sed 's/$/\t.\t.\t.\t.\t./g' | paste - exon_count.txt exon_lengths.txt exon_starts.txt | less
+^this would work to make a bed file with all exon info, but the genes in Dmoj_FBtr_start_end_pos_fin.txt are not in the same order as in Dmoj_FBtr_pos.txt.
+Have made a new file Dmoj_FBtr_start_end_pos_fin2.txt in the right order, and columns in order scaffold-start-end-FBtr:
+[s1461915@gallstone DE_data_2017]$ paste Dmoj_FBtr_FB_scaff.txt Dmoj_FBtr_start_end_pos.txt | awk '{print $2,$3,$4,$1}' | sed 's/\ /\t/g' > Dmoj_FBtr_start_end_pos_fin2.txt
+All together to make bed format with exon info:
+[s1461915@gallstone DE_data_2017]$ sed 's/$/\t.\t.\t.\t.\t./g' Dmoj_FBtr_start_end_pos_fin2.txt | paste - exon_count.txt exon_lengths.txt exon_starts.txt > Dmoj_all_with_exons.txt
+^but this has start positions 1 based not 0 based, I think...
+Mathematica: bottleneck models on Opom bottleneck bootstraps have finished, I have started on Mdor.
